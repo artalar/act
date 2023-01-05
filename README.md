@@ -26,7 +26,7 @@ const add = (n) => counter(counter() + n);
 const inc = () => add(1);
 
 // subscribe
-cinst un = isOdd.subscribe(v => console.log("isOdd", v))
+const un = isOdd.subscribe(v => console.log("isOdd", v))
 // 'isOdd false'
 
 set(0);
