@@ -67,7 +67,7 @@ export let act: {
       if (cb) {
         version++
         root = effect
-        cb(p())
+        if (s !== p()) cb(s)
         root = null
       }
     }
