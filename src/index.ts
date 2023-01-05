@@ -63,11 +63,12 @@ export let act: {
   }
 
   p.subscribe = (cb) => {
+    let lastState = s
     let effect = () => {
       if (cb) {
         version++
         root = effect
-        if (s !== p()) cb(s)
+        if (lastState !== p()) cb(lastState = s)
         root = null
       }
     }
