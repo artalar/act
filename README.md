@@ -61,3 +61,5 @@ isActual = false
 inc();
 // nothing
 ```
+
+Also, computed act accepts comparator function by second argument and allow you to filter updates like `shallowEqual` etc.
