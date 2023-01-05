@@ -26,11 +26,7 @@ const add = (n) => counter(counter() + n);
 const inc = () => add(1);
 
 // subscribe
-let isActual = true;
-const effect = act(() => isActual && console.log("isOdd", isOdd()));
-// nothing
-
-effect();
+cinst un = isOdd.subscribe(v => console.log("isOdd", v))
 // 'isOdd false'
 
 set(0);
@@ -56,10 +52,25 @@ batch(() => {
 });
 // 'isOdd true'
 
-// unsubscribe
-isActual = false
+un()
 inc();
 // nothing
 ```
 
-Also, computed act accepts comparator function by second argument and allow you to filter updates like `shallowEqual` etc.
+Computed act accepts equality check function by second argument and allows you to filter updates with `shallowEqual` etc.
+
+```ts
+const filter = act('')
+const list = act([])
+const listFilterred = act(
+  () => {
+    const query = filter()
+    return list().filter(text => text.includes(query))
+  },
+  (prev, next) => isShallowEqual(prev, next)
+)
+```
+
+Here is another form example:
+
+[![Edit @artalar/act form](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/artalar-act-forked-i0p9pe?fontsize=14&hidenavigation=1&theme=dark)
