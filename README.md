@@ -2,7 +2,7 @@
 
 I builded it for fun, but you could use it and report bugs or suggestions, I'm open.
 
-> Read [why it so small and so fast?](#why-it-so-small-and-so-fast)
+> Read [why it so small and so fast?](#why-it-is-so-small-and-so-fast)
 
 ## Installation
 
@@ -139,7 +139,7 @@ Only one rule that you should care. Аn act reading returns a guaranteed fresh s
 
 Also, it would be clearer for you to shedule any mutations outside the subscribtion call tick, like `anAct.subscribe((newValue) => Promise.resolve(() => batch(() => ...)))`
 
-## Why it so small and so fast?
+## Why it is so small and so fast?
 
 I researching reactive programming and working on a different prototypes a half of decade already. The most production ready and feature rich result of it is [reatom.dev](https://www.reatom.dev/). Under the hood Reatom uses topological sorting on top of immutable graph features, to achieve things like DI and lifecycle hooks. But does it need for all users? Nope. So I decided to create a lightweight version of Reatom with simpliest api and most lower cost and size.
 
