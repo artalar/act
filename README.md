@@ -20,17 +20,17 @@ npm i @artalar/act
 import { act, batch } from '@artalar/act'
 
 // create mutable reactive value reference
-const counter = act(0)
+const counterAct = act(0)
 // create computed reactive value reference, use other acts here in any conditions
-const isOdd = act(() => Boolean(counter() % 2))
+const isOddAct = act(() => Boolean(counterAct() % 2))
 
 // kind a actions
-const set = (n) => counter(n)
-const add = (n) => counter(counter() + n)
+const set = (n: number) => counterAct(n)
+const add = (n: number) => counterAct(counterAct() + n)
 const inc = () => add(1)
 
 // subscribe
-const un = isOdd.subscribe((v) => console.log('isOdd', v))
+const un = isOddAct.subscribe((v) => console.log('isOdd', v))
 // 'isOdd false'
 
 set(0)
@@ -56,6 +56,7 @@ batch(() => {
 })
 // 'isOdd true'
 
+// unsubscribe
 un()
 inc()
 // nothing
@@ -66,12 +67,12 @@ inc()
 Computed act accepts equality check function by second argument and allows you to filter updates with `shallowEqual` etc.
 
 ```ts
-const filter = act('')
-const list = act([])
-const listFilterred = act(
+const filterAct = act('')
+const listAct = act([])
+const listFilterredAct = act(
   () => {
-    const query = filter()
-    return list().filter((text) => text.includes(query))
+    const filter = filterAct()
+    return listAct().filter((text) => text.includes(filter))
   },
   (prev, next) => isShallowEqual(prev, next),
 )
@@ -82,15 +83,17 @@ const listFilterred = act(
 The most proud thing of Act is conditional branches optimization. It does not matter how complex your conditions and other Acts usage in them, this will be optimized in the most efficient way with minimal cost.
 
 ```ts
-const isAdmin = act(false)
-const list = act([])
-const filter = act('')
-const list = act([])
-const listFilterred = act(
-  () => list().filter((text) => text.includes(filter())),
+const isAdminAct = act(false)
+const listAct = act([])
+const filterAct = act('')
+const listAct = act([])
+const listFilterredAct = act(
+  () => listAct().filterAct((text) => text.includes(filterAct())),
   isShallowEqual,
 )
-const listView = act(() => (isAdmin() ? listFilterred() : list()))
+export const listViewAct = act(() =>
+  isAdminAct() ? listFilterredAct() : listAct(),
+)
 ```
 
 ### Dynamic acts example
@@ -114,13 +117,13 @@ The magic is... You didn't need an adapter to use Act in React! The built-in "us
 [![Edit @artalar/act react](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/artalar-act-react-vyqch1?fontsize=14&hidenavigation=1&theme=dark)
 
 ```ts
-const counter = act(0);
-const inc = () => counter(counter() + 1);
+const counterAct = act(0)
+const inc = () => counterAct(counterAct() + 1)
 
 export default function App() {
-  const count = useSyncExternalStore(counter.subscribe, counter);
+  const counter = useSyncExternalStore(counterAct.subscribe, counterAct)
 
-  return <button onClick={inc}>{count}</button>;
+  return <button onClick={inc}>{counter}</button>
 }
 ```
 
