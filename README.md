@@ -12,6 +12,8 @@ npm i @artalar/act
 
 ## Usage
 
+> See [React example below](#react-example).
+
 ### Basic example
 
 [![Edit @artalar/act](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/artalar-act-9wz836?file=/src/index.ts)
