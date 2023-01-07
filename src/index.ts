@@ -29,14 +29,14 @@ export let act: {
     p = () => {
       if (root) {
         if (_version !== version) {
-          let subPubs = pubs
+          let prevPubs = pubs
           pubs = null
           if (_pubs.length === 0 || _pubs.some((el) => el.p() !== el.s)) {
             pubs = _pubs = []
             let newState = computed()
             if (_version === -1 || !equal?.(s, newState)) s = newState
           }
-          pubs = subPubs
+          pubs = prevPubs
 
           _version = version
         }
@@ -71,9 +71,10 @@ export let act: {
     let effect = () => {
       if (cb) {
         version++
+        const prevRoot = root
         root = effect
         if (lastState !== p()) cb((lastState = s))
-        root = null
+        root = prevRoot
       }
     }
     effect()
