@@ -114,7 +114,7 @@ const add = () => listAct([...listAct(), act(0)])
 
 ### React example
 
-The magic is... You didn't need an adapter to use Act in React! The built-in "useSyncExternalStore" is the only thing you need ([docs](https://beta.reactjs.org/reference/react/useSyncExternalStore)).
+The magic is... You don't need an adapter to use Act in React! The built-in [useSyncExternalStore](https://beta.reactjs.org/reference/react/useSyncExternalStore) is the only thing you need.
 
 [![Edit @artalar/act react](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/artalar-act-react-vyqch1?fontsize=14&hidenavigation=1&theme=dark)
 
