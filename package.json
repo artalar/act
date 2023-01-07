@@ -1,6 +1,6 @@
 {
   "name": "@artalar/act",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "private": false,
   "sideEffects": false,
   "description": "act",
@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "prepublishOnly": "npm run test && npm run build",
-    "build": "microbundle",
+    "build": "microbundle --cwd h && microbundle",
     "test": "npx tsx src/index.test.ts"
   },
   "author": "artalar",
@@ -39,6 +39,7 @@
   "homepage": "https://github.com/artalar/act/packages/act",
   "files": [
     "/build",
+    "/h",
     "/package.json",
     "/README.md",
     "/src"
@@ -46,9 +47,7 @@
   "devDependencies": {
     "microbundle": "^0.15.1",
     "tsx": "^3.12.1",
-    "typescript": "^4.9.4"
-  },
-  "dependencies": {
+    "typescript": "^4.9.4",
     "uvu": "^0.5.6"
   }
 }

@@ -1,0 +1,19 @@
+{
+  "name": "@artalar/act-jsx",
+  "version": "1.0.0",
+  "private": true,
+  "sideEffects": false,
+  "description": "Act-compatible JSX renderer",
+  "source": "index.ts",
+  "main": "build/h.js",
+  "module": "build/h.module.js",
+  "umd:main": "build/h.umd.js",
+  "types": "build/h.d.ts",
+  "license": "MIT",
+  "scripts": {
+    "build": "microbundle"
+  },
+  "peerDependencies": {
+    "@artalar/act": "^1.0.5"
+  }
+}
