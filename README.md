@@ -135,7 +135,12 @@ This example shows how you could share state bitween components for in a couple 
 
 ## The rule
 
-Only one rule that you should care. Аn act reading returns a guaranteed fresh state only if you have subscribtion to it (or to it dependent act).
+Only one rule that you should care. Аn act reading returns a guaranteed fresh state only if you have subscribtion to it (or to it dependent act). It is assumed that you will only work with reactive data. However, if you need to get actual value of unobserved act just subscribe to it and immediately unsubscribe.
+
+```ts
+anAct.subscribe(() => {})(); // actualize
+const value = anAct();
+```
 
 Also, it would be clearer for you to shedule any mutations outside the subscribtion call tick, like `anAct.subscribe((newValue) => Promise.resolve(() => batch(() => ...)))`
 
