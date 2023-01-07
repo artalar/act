@@ -14,7 +14,7 @@ npm i @artalar/act
 
 ### Basic example
 
-[![Edit @artalar/act](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/loving-sunset-9wz836?fontsize=14&hidenavigation=1&theme=dark)
+[![Edit @artalar/act](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/artalar-act-9wz836?file=/src/index.ts)
 
 ```ts
 import { act, batch } from '@artalar/act'
@@ -111,7 +111,9 @@ const add = () => listAct([...listAct(), act(0)])
 
 The magic is... You didn't need an adapter to use Act in React! The built-in "useSyncExternalStore" is the only thing you need ([docs](https://beta.reactjs.org/reference/react/useSyncExternalStore)).
 
-```
+[![Edit @artalar/act react](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/artalar-act-react-vyqch1?fontsize=14&hidenavigation=1&theme=dark)
+
+```ts
 const counter = act(0);
 const inc = () => counter(counter() + 1);
 
@@ -126,7 +128,7 @@ export default function App() {
 
 This example shows how you could share state bitween components for in a couple lines of code and optimize rerenders.
 
-[![Edit @artalar/act react](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/artalar-act-react-vyqch1?fontsize=14&hidenavigation=1&theme=dark)
+[![Edit @artalar/act react](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/artalar-act-react-list-vesmct?file=/src/App.tsx)
 
 ## The rule
 
