@@ -135,6 +135,12 @@ This example shows how you could share state bitween components for in a couple 
 
 [![Edit @artalar/act react](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/artalar-act-react-list-vesmct?file=/src/App.tsx)
 
+### Svelte
+
+Act provides compatible subscribtion interface, so you could use `$` prefix to subscribe to an act.
+
+[REPL example](https://svelte.dev/repl/66d2d612134c46d3b3f5a0b933d2c200?version=3.55.0)
+
 ## The rule
 
 Only one rule that you should care. Аn act reading returns a guaranteed fresh state only if you have subscribtion to it (or to it dependent act). It is assumed that you will only work with reactive data. However, if you need to get actual value of unobserved act just subscribe to it and immediately unsubscribe.
