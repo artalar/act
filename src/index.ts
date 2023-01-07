@@ -67,7 +67,7 @@ export let act: {
   }
 
   p.subscribe = (cb) => {
-    let lastState = s
+    let lastState: any = {}
     let effect = () => {
       if (cb) {
         version++
