@@ -11,6 +11,7 @@ export interface ActComputed<T> {
 
 let root: null | (() => any) = null
 let pubs: null | Pubs = null
+// global `dirty` flag used to cache visited nodes during invalidation
 let version = 0
 let queue: Array<Array<() => any>> = []
 
@@ -26,20 +27,22 @@ export let act: {
     let computed = s as () => any
     // @ts-expect-error
     p = () => {
-      if (_version !== version) {
-        let subPubs = pubs
-        pubs = null
-        if (_pubs.length === 0 || _pubs.some((el) => el.p() !== el.s)) {
-          pubs = _pubs = []
-          let newState = computed()
-          if (_version === -1 || !equal?.(s, newState)) s = newState
+      if (root) {
+        if (_version !== version) {
+          let subPubs = pubs
+          pubs = null
+          if (_pubs.length === 0 || _pubs.some((el) => el.p() !== el.s)) {
+            pubs = _pubs = []
+            let newState = computed()
+            if (_version === -1 || !equal?.(s, newState)) s = newState
+          }
+          pubs = subPubs
+
+          _version = version
         }
-        pubs = subPubs
 
-        _version = version
+        pubs?.push({ p, s })
       }
-
-      pubs?.push({ p, s })
 
       return s
     }
@@ -49,6 +52,7 @@ export let act: {
     p = (newState?: any) => {
       if (newState !== undefined && newState !== s) {
         s = newState
+        // version++
         queue.push(listeners)
         listeners = []
         if (queue.length === 1) for (const cb of queue.pop()!) cb()
@@ -68,7 +72,7 @@ export let act: {
       if (cb) {
         version++
         root = effect
-        if (lastState !== p()) cb(lastState = s)
+        if (lastState !== p()) cb((lastState = s))
         root = null
       }
     }
