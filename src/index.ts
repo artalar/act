@@ -1,15 +1,23 @@
-interface Pubs
-  extends Array<{ p: /* publisher */ () => any; s: /* state */ any }> {}
-export interface ActValue<T> {
-  (state?: T): T
-  subscribe(cb: (state: T) => any): () => void
+interface Pubs extends Array<{ a: /* act */ () => any; s: /* state */ any }> {}
+
+interface Effect {
+  (): void
+  _v: /* leafs */ Array<ActValue>
 }
-export interface ActComputed<T> {
-  (): T
+
+interface Subscribable<T> {
   subscribe(cb: (state: T) => any): () => void
 }
 
-let root: null | (() => any) = null
+export interface ActValue<T = any> extends Subscribable<T> {
+  (state?: T): T
+  _e: /* roots */ Array<Effect>
+}
+export interface ActComputed<T = any> extends Subscribable<T> {
+  (): T
+}
+
+let root: null | Effect = null
 let pubs: null | Pubs = null
 // global `dirty` flag used to cache visited nodes during invalidation
 let version = 0
@@ -18,20 +26,20 @@ let queue: Array<Array<() => any>> = []
 export let act: {
   <T>(computed: () => T, equal?: (prev: T, next: T) => boolean): ActComputed<T>
   <T>(state: T): ActValue<T>
-} = (s, equal?: (prev: any, next: any) => boolean) => {
+} = (s, equal?: (prev: any, next: any) => boolean): any => {
   let _version = -1
-  let p: ActValue<any> | ActComputed<any>
+  let a: ActValue<any> & ActComputed<any>
 
   if (typeof s === 'function') {
     let _pubs: Pubs = []
     let computed = s as () => any
     // @ts-expect-error
-    p = () => {
+    a = () => {
       if (root) {
         if (_version !== version) {
           let prevPubs = pubs
           pubs = null
-          if (_pubs.length === 0 || _pubs.some((el) => el.p() !== el.s)) {
+          if (_pubs.length === 0 || _pubs.some((el) => el.a() !== el.s)) {
             pubs = _pubs = []
             let newState = computed()
             if (_version === -1 || !equal?.(s, newState)) s = newState
@@ -41,51 +49,60 @@ export let act: {
           _version = version
         }
 
-        pubs?.push({ p, s })
+        pubs?.push({ a, s })
       }
 
       return s
     }
   } else {
-    let listeners: Array<() => any> = []
     // @ts-expect-error
-    p = (newState?: any) => {
-      if (newState !== undefined && newState !== s) {
-        s = newState
-        // version++
-        queue.push(listeners)
-        listeners = []
-        if (queue.length === 1) for (const cb of queue.pop()!) cb()
+    a = (...args: any[]) => {
+      if (args.length && args[0] !== s) {
+        s = args[0]
+        queue.push(a._e)
+        a._e = []
+        if (queue.length === 1) for (let cb of queue.pop()!) cb()
       }
 
-      pubs?.push({ p, s })
+      pubs?.push({ a, s })
 
-      if (root && !listeners.includes(root)) listeners.push(root)
+      if (root && _version !== version) {
+        _version = version
+        a._e.push(root)
+        root._v.push(a)
+      }
 
       return s
     }
+    a._e = []
   }
 
-  p.subscribe = (cb) => {
+  a.subscribe = (cb) => {
+    let lastQueu: any
     let lastState: any = {}
-    let effect = () => {
-      if (cb) {
-        version++
-        const prevRoot = root
-        root = effect
-        if (lastState !== p()) cb((lastState = s))
-        root = prevRoot
-      }
+    // @ts-expect-error
+    let effect: Effect = () => {
+      if (lastQueu === queue) return
+      lastQueu = queue
+
+      ++version
+
+      let prevRoot = root
+      root = effect
+
+      effect._v = []
+      if (lastState !== a()) cb((lastState = s))
+      root = prevRoot
     }
     effect()
+    lastQueu = null
 
     return () => {
-      // @ts-expect-error
-      cb = null
+      for (let a of effect._v) a._e.splice(a._e.indexOf(effect), 1)
     }
   }
 
-  return p
+  return a
 }
 
 export let batch = (cb: () => any) => {
