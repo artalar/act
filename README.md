@@ -140,6 +140,12 @@ Act provides a compatible subscription interface, so you can use the `$` prefix 
 
 [REPL example](https://svelte.dev/repl/66d2d612134c46d3b3f5a0b933d2c200?version=3.55.0)
 
+## Limitation
+
+There is a set of limitations which allow to simplify internals, speedup runtime and reduce bundle overhead.
+
+- act value could store and be updated only with no `undefined` value.
+
 ## The rule
 
 There is only one rule to remember. When read, an act is guaranteed to return a fresh state only if you have a subscribtion to it (or to its dependent act). It is assumed that you will only work with reactive data. However, if you need to get the current value of an unobserved act, just subscribe to it and immediately unsubscribe.
