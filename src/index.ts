@@ -23,9 +23,12 @@ let pubs: null | Pubs = null
 let version = 0
 let queue: Array<Array<() => any>> = []
 
+// @ts-expect-error
 export let act: {
   <T>(computed: () => T, equal?: (prev: T, next: T) => boolean): ActComputed<T>
   <T>(state: T): ActValue<T>
+
+  notify: (cb: () => void) => void
 } = (s, equal?: (prev: any, next: any) => boolean): any => {
   let _version = -1
   let a: ActValue<any> & ActComputed<any>
@@ -35,22 +38,20 @@ export let act: {
     let computed = s as () => any
     // @ts-expect-error
     a = () => {
-      if (root) {
-        if (_version !== version) {
-          let prevPubs = pubs
-          pubs = null
-          if (_pubs.length === 0 || _pubs.some((el) => el.a() !== el.s)) {
-            pubs = _pubs = []
-            let newState = computed()
-            if (_version === -1 || !equal?.(s, newState)) s = newState
-          }
-          pubs = prevPubs
-
-          _version = version
+      if (!root || _version !== version) {
+        let prevPubs = pubs
+        pubs = null
+        if (_pubs.length === 0 || _pubs.some((el) => el.a() !== el.s)) {
+          pubs = _pubs = []
+          let newState = computed()
+          if (_version === -1 || !equal?.(s, newState)) s = newState
         }
+        pubs = prevPubs
 
-        pubs?.push({ a, s })
+        _version = version
       }
+
+      pubs?.push({ a, s })
 
       return s
     }
@@ -61,7 +62,12 @@ export let act: {
         s = args[0]
         queue.push(a._e)
         a._e = []
-        if (queue.length === 1) for (let cb of queue.pop()!) cb()
+
+        act.notify(() => {
+          const _queue = queue
+          queue = []
+          for (let effects of _queue) for (let effect of effects) effect()
+        })
       }
 
       pubs?.push({ a, s })
@@ -104,10 +110,4 @@ export let act: {
 
   return a
 }
-
-export let batch = (cb: () => any) => {
-  queue.push([])
-  cb()
-  for (let listeners of queue) for (let cb of listeners) cb()
-  queue = []
-}
+act.notify = (cb) => Promise.resolve().then(cb)
