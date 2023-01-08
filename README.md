@@ -1,8 +1,8 @@
-**Act** is the most efficient reactive library in both: speed, size, correctness. [Here is](https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn) the really complex benchmark which Act passed pefectly. The size is only [0.3KB gzip](https://bundlejs.com/?q=%40artalar%2Fact)!
+**Act** is a reactive library that is incredibly efficient in terms of speed, size and consistency. [Here is](https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn) a big benchmark comparing all popular state managers, which Act passes with flying colors. The size is only [0.3KB gzipped](https://bundlejs.com/?q=%40artalar%2Fact)!
 
-I builded it for fun, but you could use it and report bugs or suggestions, I'm open.
+I built it for fun, but you are free to use it in your projects. I'm open to bug reports and suggestions.
 
-> Read [why it so small and so fast?](#why-it-is-so-small-and-so-fast)
+> See also: [how is Act so small and so fast?](#how-is-it-so-small-and-so-fast)
 
 ## Installation
 
@@ -23,10 +23,10 @@ import { act, batch } from '@artalar/act'
 
 // create mutable reactive value reference
 const counterAct = act(0)
-// create computed reactive value reference, use other acts here in any conditions
+// create computed reactive value reference, use other acts here in any way
 const isOddAct = act(() => Boolean(counterAct() % 2))
 
-// kind a actions
+// kind of actions
 const set = (n: number) => counterAct(n)
 const add = (n: number) => counterAct(counterAct() + n)
 const inc = () => add(1)
@@ -66,12 +66,12 @@ inc()
 
 ### Filter example
 
-Computed act accepts equality check function by second argument and allows you to filter updates with `shallowEqual` etc.
+The computed act accepts an equality check function as the second argument and allows you to filter updates with `shallowEqual` etc.
 
 ```ts
 const filterAct = act('')
 const listAct = act([])
-const listFilterredAct = act(
+const listFilteredAct = act(
   () => {
     const filter = filterAct()
     return listAct().filter((text) => text.includes(filter))
@@ -82,27 +82,26 @@ const listFilterredAct = act(
 
 ### Conditional branches example
 
-The most proud thing of Act is conditional branches optimization. It does not matter how complex your conditions and other Acts usage in them, this will be optimized in the most efficient way with minimal cost.
+Act's proudest feature is conditional branches optimization. Your conditions and the usage of other acts in them, no matter how complex, will be optimized in the most efficient way at the minimal cost.
 
 ```ts
 const isAdminAct = act(false)
 const listAct = act([])
 const filterAct = act('')
-const listAct = act([])
-const listFilterredAct = act(
+const listFilteredAct = act(
   () => listAct().filterAct((text) => text.includes(filterAct())),
   isShallowEqual,
 )
 export const listViewAct = act(() =>
-  isAdminAct() ? listFilterredAct() : listAct(),
+  isAdminAct() ? listFilteredAct() : listAct(),
 )
 ```
 
 ### Dynamic acts example
 
-As in the example below you could use (subscribe to) acts inside loops and create (and delete) acts dynamically. It could be useful to optimize your data updates and subscribtions.
+This snippet shows how you can use (subscribe to) acts inside loops and create (and delete) acts dynamically. This could be useful for optimizing your data updates and subscriptions.
 
-> See [dinamic list in React](#react-example-dinamic-list).
+> See [example dynamic list in React](#react-example-dynamic-list).
 
 ```ts
 const listAct = act([])
@@ -114,7 +113,7 @@ const add = () => listAct([...listAct(), act(0)])
 
 ### React example
 
-The magic is... You don't need an adapter to use Act in React! The built-in [useSyncExternalStore](https://beta.reactjs.org/reference/react/useSyncExternalStore) is the only thing you need.
+Here comes the magic... You don't need an adapter to use Act in React! The built-in [useSyncExternalStore](https://beta.reactjs.org/reference/react/useSyncExternalStore) is the only thing you need.
 
 [![Edit @artalar/act react](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/artalar-act-react-vyqch1?fontsize=14&hidenavigation=1&theme=dark)
 
@@ -129,43 +128,43 @@ export default function App() {
 }
 ```
 
-### React example dinamic list
+### React example dynamic list
 
-This example shows how you could share state bitween components for in a couple lines of code and optimize rerenders.
+This example shows how you can share state between components and optimize rerenders with a couple of lines.
 
 [![Edit @artalar/act react](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/artalar-act-react-list-vesmct?file=/src/App.tsx)
 
 ### Svelte
 
-Act provides compatible subscribtion interface, so you could use `$` prefix to subscribe to an act.
+Act provides a compatible subscription interface, so you can use the `$` prefix to subscribe to an act.
 
 [REPL example](https://svelte.dev/repl/66d2d612134c46d3b3f5a0b933d2c200?version=3.55.0)
 
 ## The rule
 
-Only one rule that you should care. Аn act reading returns a guaranteed fresh state only if you have subscribtion to it (or to it dependent act). It is assumed that you will only work with reactive data. However, if you need to get actual value of unobserved act just subscribe to it and immediately unsubscribe.
+There is only one rule to remember. When read, an act is guaranteed to return a fresh state only if you have a subscribtion to it (or to its dependent act). It is assumed that you will only work with reactive data. However, if you need to get the current value of an unobserved act, just subscribe to it and immediately unsubscribe.
 
 ```ts
 anAct.subscribe(() => {})(); // actualize
 const value = anAct();
 ```
 
-Also, it would be clearer for you to shedule any mutations outside the subscribtion call tick, like `anAct.subscribe((newValue) => Promise.resolve(() => batch(() => ...)))`
+Also, it is recommended to shedule any mutations outside the subscription call tick, like `anAct.subscribe((newValue) => Promise.resolve(() => batch(() => ...)))`
 
-## Why it is so small and so fast?
+## How is it so small and so fast?
 
-I researching reactive programming and working on a different prototypes a half of decade already. The most production ready and feature rich result of it is [reatom.dev](https://www.reatom.dev/). Under the hood Reatom uses topological sorting on top of immutable graph features, to achieve things like DI and lifecycle hooks. But does it need for all users? Nope. So I decided to create a lightweight version of Reatom with simpliest api and most lower cost and size.
+I have spent half a decade researching reactive programming and prototyping. The most production-ready and feature-rich result of my work is [reatom.dev](https://www.reatom.dev/). Under the hood Reatom uses topological sorting on top of immutable graph features, to achieve things like DI and lifecycle hooks. But does it apply to each and every use case? Nope. So I decided to create a lightweight version of Reatom with a simpler api, lower cost and smaller size.
 
-Sooo, how it work? One of the difficult thing in reactive programming is optimization of node combination and it [glitches](https://en.wikipedia.org/wiki/Reactive_programming#Glitches). But the condition usage of computed dependencies is the most hard and painful thing, there is a lot of corner cases which you should care, if you want to support any kind of conditions in most optimal way.
+Sooo, how does it work? One of the challenges in reactive programming is optimizing node combination, which can cause [glitches](https://en.wikipedia.org/wiki/Reactive_programming#Glitches). However, conditional usage of computed dependencies is the hardest and most painful thing, as there is a lot of corner cases to consider if you want conditions of any kind to be supported in the most optimal way.
 
-Like, you should unsubscribe from all unused dependencies, but how to know which is used and which is not? Basically, there is some hook which work under the hood and links the parent and the child of computations. And when you use the same dependencies each time in your computations the hook understand it and don't resubscribe to them. But what if you use the same dependencie a few times? Or what if you stop using some dependencie in the start of your computations, but still uses other dependencies below, how to understand that the below dependencies were used before or are they new?
+For example, when you need to unsubscribe from all unused dependencies, how do you know which of them are used and which are not? Basically, there is a hook working under the hood to link the parent and the child of a computation. And when the dependencies used in your computations are the same every time, the hook understands it and doesn't resubscribe to them. But what if you use the same dependency several times? Or, when you stop using a dependency at the top level of your computations, but keep using other dependencies at lower levels, how to understand whether the lower dependencies are new or were used before?
 
-All this cases proccesed by complex cache invalidation policy which took a significant cost in terms of performance and memory usage.
+All these cases are managed with a complex cache invalidation policy which has a significant performance and memory cost.
 
-But... We already use a lot of memory for caches and CPU for it ivalidation? So, may be that overhead is not worth it and the whole recalculation of all dependencie graph could be cheaper? Is it? Well, this library answer, **YES**.
+But... We already use a lot of memory for cache and CPU for its invalidation? So, maybe that overhead is not worth it and the whole recalculation of all dependency graph could be cheaper? Is it? Well, this library answers **YES**.
 
-Act not uses two-directional links in dependencies graph and don't need to invalidate it. The only connections which builded from the scratch on each update is "subscriber <- (any count of computed nodes without knowing of together) <- value setter (`ActValue` type)". This is super cheap.
+Act does not use bidirectional links in dependency graphs and doesn't need to invalidate them. The only connection built from scratch on each update is "subscriber <- (any number of computed nodes without knowledge of each other) <- value setter (`ActValue` type)". This is super cheap.
 
-But there is one [limitation](#the-rule), as we don't have a cross-links and statuses of invalidation, we couldn't read act without subscibtions safety. And there is a hidden performance issue too. As each subscriber need to give a know about itself to dependencies setters, every subscriber should walk the whole graph each time and if you have one complex act with many subscribers it would be not absolutely optimal. The good news are: 1) this is a rare case; 2) the whole graph traverse is probably cheap operation, thanks to JIT.
+But there is one [limitation](#the-rule): as we don't have cross-links and invalidation states, we can't safely read from an act without subsciption. And there is a hidden performance issue too. Because dependency setters need to know about each subscriber, each subscriber should traverse the whole graph every time and if you have one complex act with many subscribers it would not be perfectly optimal. The good news are: 1) this is a rare case; 2) the whole graph traversal is probably cheap thanks to JIT.
 
-However, [Reatom](https://www.reatom.dev/) combines both approaches and optimize all your computations in most complex cases, allows you to inspect immutable snaphots of all updates. If you need something more feature rich, take a look into it.
+However, [Reatom](https://www.reatom.dev/) combines both approaches and will optimize all your computations in the most complex cases, allowing you to inspect immutable snaphots of any update. If you need something more feature-rich, have a look at it.
