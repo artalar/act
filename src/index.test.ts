@@ -1,9 +1,31 @@
 import { test } from 'uvu'
 import * as assert from 'uvu/assert'
 
-import { act, batch } from './index'
+import { act } from './index'
 
-test('main', () => {
+const batch = (cb: () => any) => {
+  let { notify } = act
+  let run: () => any
+  act.notify = (_run) => (run = _run)
+  try {
+    cb()
+  } finally {
+    act.notify = notify
+  }
+  run!()
+}
+
+test('read outside effect stale computed', () => {
+  const a = act(0)
+  const b = () => a()
+
+  assert.is(b(), 0)
+
+  a(1)
+  assert.is(b(), 1)
+})
+
+test('https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn', () => {
   let res: Array<number> = []
 
   const numbers = Array.from({ length: 2 }, (_, i) => i)
@@ -33,6 +55,7 @@ test('main', () => {
       B(1)
       A(1 + i * 2)
     })
+
     batch(() => {
       A(2 + i * 2)
       B(2)
