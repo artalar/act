@@ -6,7 +6,8 @@ const isObserver = (
 export const h = (tag: any, props: Record<string, any>, ...children: any[]) => {
   const type = typeof tag
 
-  if (tag === hf || isObserver(tag)) return tag
+  if (tag === hf) return children
+  if (isObserver(tag)) return tag
 
   if (type === 'function') {
     props ??= {}
@@ -63,4 +64,5 @@ export const h = (tag: any, props: Record<string, any>, ...children: any[]) => {
   return element
 }
 
+/** Fragment */
 export const hf = () => {}
