@@ -6,10 +6,10 @@
   "description": "Act-compatible JSX renderer",
   "source": "index.ts",
   "exports": {
-    "require": "./index.cjs",
-    "default": "./index.modern.js"
+    "require": "./index.js",
+    "default": "./index.modern.mjs"
   },
-  "main": "./index.cjs",
+  "main": "./index.js",
   "module": "./index.module.js",
   "unpkg": "./index.umd.js",
   "types": "./index.d.ts",
