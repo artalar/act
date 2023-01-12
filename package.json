@@ -1,15 +1,15 @@
 {
   "name": "@artalar/act",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "private": false,
   "sideEffects": false,
   "description": "act",
   "source": "src/index.ts",
   "exports": {
-    "require": "./build/index.cjs",
-    "default": "./build/index.modern.js"
+    "require": "./build/index.js",
+    "default": "./build/index.modern.mjs"
   },
-  "main": "./build/index.cjs",
+  "main": "./build/index.js",
   "module": "./build/index.module.js",
   "unpkg": "./build/index.umd.js",
   "types": "./build/index.d.ts",
