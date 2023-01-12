@@ -1,61 +1,46 @@
-const isObserver = (
-  thing: any,
-): thing is { subscribe: (cb: (v: any) => any) => any } =>
-  typeof thing?.subscribe === 'function'
-
-export const h = (tag: any, props: Record<string, any>, ...children: any[]) => {
-  const type = typeof tag
-
+export var h = (tag: any, props: Record<string, any>, ...children: any[]) => {
   if (tag === hf) return children
-  if (isObserver(tag)) return tag
 
-  if (type === 'function') {
-    props ??= {}
-    props.children = children
-    return tag(props)
-  }
+  if (typeof tag === 'function') tag(props ?? {}, children)
 
-  const element = document.createElement(tag)
+  var element = document.createElement(tag)
 
-  for (const k in props) {
-    const v = props[k]
-    if (isObserver(v)) {
-      var un = v.subscribe((v) =>
+  for (var k in props) {
+    var prop = props[k]
+    if (typeof prop?.subscribe === 'function') {
+      var un = prop.subscribe((v: any) =>
         !un || element.isConnected ? (element[k] = v) : un(),
       )
     } else {
-      element[k] = v
+      element[k] = prop
     }
   }
 
-  const walk = (child: any) => {
+  var walk = (child: any) => {
     if (Array.isArray(child)) child.forEach(walk)
     else {
-      if (isObserver(child)) {
-        const anAct = child
-        child = document.createTextNode('')
-        var un = anAct.subscribe((v) => {
-          if (un && !child.isConnected) {
-            un()
-          } else {
-            if (v instanceof Element) {
-              if (!un) {
-                child = v
+      if (typeof child?.subscribe === 'function') {
+        var textNode = document.createTextNode('') as ChildNode,
+          un = child.subscribe((v: any) => {
+            if (un && !textNode.isConnected) un()
+            else {
+              if (v instanceof Element) {
+                if (un) {
+                  element.insertBefore(v, textNode)
+                  textNode.remove()
+                }
+                textNode = v
               } else {
-                element.insertBefore(v, child)
-                child.remove()
-                child = v
+                textNode.textContent = v
               }
-            } else {
-              child.textContent = v
             }
-          }
-        })
+          })
+        element.appendChild(textNode)
+      } else {
+        element.appendChild(
+          child?.nodeType ? child : document.createTextNode(String(child)),
+        )
       }
-
-      if (!child?.nodeType) child = document.createTextNode(String(child))
-
-      element.appendChild(child)
     }
   }
 
@@ -65,4 +50,4 @@ export const h = (tag: any, props: Record<string, any>, ...children: any[]) => {
 }
 
 /** Fragment */
-export const hf = () => {}
+export var hf = () => {}
