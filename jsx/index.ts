@@ -582,7 +582,7 @@ export namespace h {
 export var h = (tag: any, props: Record<string, any>, ...children: any[]) => {
   if (tag === hf) return children
 
-  if (typeof tag === 'function') tag(props ?? {}, children)
+  if (typeof tag === 'function') return tag(props ?? {}, children)
 
   var element = document.createElement(tag)
 
