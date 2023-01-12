@@ -6,19 +6,18 @@
   "description": "act",
   "source": "src/index.ts",
   "exports": {
-    "require": "./build/index.js",
-    "default": "./build/index.module.js"
+    "require": "./build/index.cjs",
+    "default": "./build/index.modern.js"
   },
-  "main": "build/index.js",
-  "module": "build/index.module.js",
-  "unpkg": "build/index.umd.js",
-  "types": "build/index.d.ts",
+  "main": "./build/index.cjs",
+  "module": "./build/index.module.js",
+  "unpkg": "./build/index.umd.js",
   "browserslist": [
-    "last 4 chrome versions"
+    "last 10 chrome versions"
   ],
   "scripts": {
     "prepublishOnly": "npm run test && npm run build",
-    "build": "microbundle --cwd h && microbundle",
+    "build": "microbundle --cwd jsx && microbundle",
     "test": "npx tsx src/index.test.ts"
   },
   "author": "artalar",
@@ -39,7 +38,7 @@
   "homepage": "https://github.com/artalar/act/packages/act",
   "files": [
     "/build",
-    "/h",
+    "/jsx",
     "/package.json",
     "/README.md",
     "/src"

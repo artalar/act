@@ -5,7 +5,7 @@ interface Effect {
   _v: /* leafs */ Array<ActValue>
 }
 
-interface Subscribable<T> {
+interface Subscribable<T = any> {
   subscribe(cb: (state: T) => any): () => void
 }
 
