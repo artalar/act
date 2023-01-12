@@ -3,7 +3,7 @@ import * as assert from 'uvu/assert'
 
 import { act } from './index'
 
-const batch = (cb: () => any) => {
+const sync = (cb: () => any) => {
   let { notify } = act
   let run: () => any
   act.notify = (_run) => (run = _run)
@@ -51,12 +51,12 @@ test('https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn', () => {
   let i = 4
   while (--i) {
     res.length = 0
-    batch(() => {
+    sync(() => {
       B(1)
       A(1 + i * 2)
     })
 
-    batch(() => {
+    sync(() => {
       A(2 + i * 2)
       B(2)
     })
