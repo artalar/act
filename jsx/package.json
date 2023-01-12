@@ -1,6 +1,6 @@
 {
   "name": "@artalar/act-jsx",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "sideEffects": false,
   "description": "Act-compatible JSX renderer",

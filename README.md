@@ -1,4 +1,4 @@
-**Act** is a reactive library that is incredibly efficient in terms of speed, size and consistency. [Here is](https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn) a big benchmark comparing all popular state managers, which Act passes with flying colors. The size is only [0.3KB gzipped](https://bundlejs.com/?q=%40artalar%2Fact)!
+**Act** is a reactive library that is incredibly efficient in terms of speed, size and consistency. [Here is](https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn) a big benchmark comparing all popular state managers, which Act passes with flying colors. The size is only [0.4KB gzipped](https://bundlejs.com/?q=%40artalar%2Fact)!
 
 I built it for fun, but you are free to use it in your projects. I'm open to bug reports and suggestions.
 
@@ -12,21 +12,27 @@ npm i @artalar/act
 
 ## Usage
 
+Pass initial value to `act` function to create mutable observer or pass a callback to create a computed observer. You could mutate observer by call it with a new value. All observers are lazy and recalculates only when has a subscribtion. You could read acts (lets call it "act" / "acts") by call it as a function. Act reading inside a computer is reactive.
+
+All updates are butch and will be applied in the next microtask. So you can update multiple acts synchronously and all computed will callculate and subscribers will be notified only once. You could redefine this behavior by overriding `act.notify` method.
+
 > See [React example below](#react-example).
 
 ### Basic example
 
+You could use Act with React and Svelte without bindings!
+
 [![Edit @artalar/act](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/artalar-act-9wz836?file=/src/index.ts)
 
 ```ts
-import { act, batch } from '@artalar/act'
+import { act } from '@artalar/act'
 
 // create mutable reactive value reference
 const counterAct = act(0)
-// create computed reactive value reference, use other acts here in any way
+// create computed reactive value reference, use other acts here in any conditions
 const isOddAct = act(() => Boolean(counterAct() % 2))
 
-// kind of actions
+// kind a actions
 const set = (n: number) => counterAct(n)
 const add = (n: number) => counterAct(counterAct() + n)
 const inc = () => add(1)
@@ -35,33 +41,40 @@ const inc = () => add(1)
 const un = isOddAct.subscribe((v) => console.log('isOdd', v))
 // 'isOdd false'
 
-set(0)
-// nothing
+;(async () => {
+  set(0)
+  await 0
+  // nothing
 
-inc()
-// 'isOdd true'
-add(2)
-// nothing
-inc()
-// 'isOdd false'
+  inc()
+  await 0
+  // 'isOdd true'
+  add(2)
+  await 0
+  // nothing
+  inc()
+  await 0
+  // 'isOdd false'
 
-batch(() => {
   inc()
   inc()
-})
-// nothing
 
-batch(() => {
-  inc()
-  inc()
-  inc()
-})
-// 'isOdd true'
+  await 0
+  // nothing
 
-// unsubscribe
-un()
-inc()
-// nothing
+  inc()
+  inc()
+  inc()
+
+  await 0
+  // 'isOdd true'
+
+  // unsubscribe
+  un()
+  inc()
+  await 0
+  // nothing
+})()
 ```
 
 ### Filter example
@@ -142,8 +155,10 @@ Act provides a compatible subscription interface, so you can use the `$` prefix 
 
 ### Sync batch
 
+You could specify your own batch function by redefining `act.notify`. For example, here is `sync` helper which allow you to collect all updates and compute reactions immidialty.
+
 ```ts
-const batch = (cb: () => any) => {
+const sync = (cb: () => any) => {
   let { notify } = act
   let run: () => any
   act.notify = (_run) => (run = _run)
@@ -155,17 +170,6 @@ const batch = (cb: () => any) => {
   run!()
 }
 ```
-
-## The rule
-
-There is only one rule to remember. When read, an act is guaranteed to return a fresh state only if you have a subscribtion to it (or to its dependent act). It is assumed that you will only work with reactive data. However, if you need to get the current value of an unobserved act, just subscribe to it and immediately unsubscribe.
-
-```ts
-anAct.subscribe(() => {})() // actualize
-const value = anAct()
-```
-
-Also, it is recommended to shedule any mutations outside the subscription call tick, like `anAct.subscribe((newValue) => Promise.resolve(() => batch(() => ...)))`
 
 ## How is it so small and so fast?
 
@@ -181,6 +185,6 @@ But... We already use a lot of memory for cache and CPU for its invalidation? So
 
 Act does not use bidirectional links in dependency graphs and doesn't need to invalidate them. The only connection built from scratch on each update is "subscriber <- (any number of computed nodes without knowledge of each other) <- value setter (`ActValue` type)". This is super cheap.
 
-But there is one [limitation](#the-rule): as we don't have cross-links and invalidation states, we can't safely read from an act without subsciption. And there is a hidden performance issue too. Because dependency setters need to know about each subscriber, each subscriber should traverse the whole graph every time and if you have one complex act with many subscribers it would not be perfectly optimal. The good news are: 1) this is a rare case; 2) the whole graph traversal is probably cheap thanks to JIT.
+But there is one limitation: as we don't have cross-links and invalidation states, if we want to read an act without subsciption, we need to run all invalidation logic each time. And there is another performance. Because dependency setters need to know about each subscriber, each subscriber should traverse the whole graph every time and if you have one complex act with many subscribers it would not be perfectly optimal. The good news are: 1) this is a rare case; 2) the whole graph traversal is probably cheap thanks to JIT.
 
 However, [Reatom](https://www.reatom.dev/) combines both approaches and will optimize all your computations in the most complex cases, allowing you to inspect immutable snaphots of any update. If you need something more feature-rich, have a look at it.
