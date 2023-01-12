@@ -5,10 +5,10 @@
   "sideEffects": false,
   "description": "Act-compatible JSX renderer",
   "source": "index.ts",
-  "main": "build/h.js",
-  "module": "build/h.module.js",
-  "umd:main": "build/h.umd.js",
-  "types": "build/h.d.ts",
+  "main": "build/jsx.js",
+  "module": "build/jsx.module.js",
+  "umd:main": "build/jsx.umd.js",
+  "types": "build/jsx.d.ts",
   "license": "MIT",
   "scripts": {
     "build": "microbundle"
