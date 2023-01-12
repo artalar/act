@@ -71,13 +71,3 @@ build/
 
 packages/**/package-lock.json
 packages/**/yarn.lock
-
-jsx/index.d.ts
-jsx/index.js
-jsx/index.js.map
-jsx/index.modern.js
-jsx/index.modern.js.map
-jsx/index.module.js
-jsx/index.module.js.map
-jsx/index.umd.js
-jsx/index.umd.js.map

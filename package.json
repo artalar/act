@@ -1,6 +1,6 @@
 {
   "name": "@artalar/act",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "private": false,
   "sideEffects": false,
   "description": "act",
@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "prepublishOnly": "npm run test && npm run build",
-    "build": "microbundle --cwd jsx && microbundle",
+    "build": "microbundle --cwd jsx --generateTypes false && microbundle",
     "test": "npx tsx src/index.test.ts"
   },
   "author": "artalar",

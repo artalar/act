@@ -4,15 +4,15 @@
   "private": true,
   "sideEffects": false,
   "description": "Act-compatible JSX renderer",
-  "source": "index.ts",
+  "source": "./index.ts",
   "exports": {
-    "require": "./index.js",
-    "default": "./index.modern.mjs"
+    "require": "./build/index.js",
+    "default": "./build/index.modern.mjs"
   },
-  "main": "./index.js",
-  "module": "./index.module.js",
-  "unpkg": "./index.umd.js",
-  "types": "./index.d.ts",
+  "main": "./build/index.js",
+  "module": "./build/index.module.js",
+  "unpkg": "./build/index.umd.js",
+  "types": "./jsx.d.ts",
   "license": "MIT",
   "browserslist": [
     "last 10 chrome versions"
