@@ -12,6 +12,7 @@
   "main": "./index.cjs",
   "module": "./index.module.js",
   "unpkg": "./index.umd.js",
+  "types": "./index.d.ts",
   "license": "MIT",
   "browserslist": [
     "last 10 chrome versions"

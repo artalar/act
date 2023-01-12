@@ -1,6 +1,6 @@
 {
   "name": "@artalar/act",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": false,
   "sideEffects": false,
   "description": "act",
@@ -12,6 +12,7 @@
   "main": "./build/index.cjs",
   "module": "./build/index.module.js",
   "unpkg": "./build/index.umd.js",
+  "types": "./build/index.d.ts",
   "browserslist": [
     "last 10 chrome versions"
   ],
