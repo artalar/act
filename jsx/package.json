@@ -5,15 +5,18 @@
   "sideEffects": false,
   "description": "Act-compatible JSX renderer",
   "source": "index.ts",
-  "main": "build/jsx.js",
-  "module": "build/jsx.module.js",
-  "umd:main": "build/jsx.umd.js",
-  "types": "build/jsx.d.ts",
-  "license": "MIT",
-  "scripts": {
-    "build": "microbundle"
+  "exports": {
+    "require": "./index.cjs",
+    "default": "./index.modern.js"
   },
+  "main": "./index.cjs",
+  "module": "./index.module.js",
+  "unpkg": "./index.umd.js",
+  "license": "MIT",
+  "browserslist": [
+    "last 10 chrome versions"
+  ],
   "peerDependencies": {
-    "@artalar/act": "^1.0.5"
+    "@artalar/act": "^2.0.0"
   }
 }
