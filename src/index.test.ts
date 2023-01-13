@@ -65,4 +65,13 @@ test('https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn', () => {
   }
 })
 
+test('should not store duplicate effects', () => {
+  const a = act(0)
+  act(() => {
+    for (let i = 0; i < 10; i++) a()
+  }).subscribe(() => {})
+
+  assert.is(a._e.length, 1)
+})
+
 test.run()
