@@ -38,9 +38,10 @@ export let act: {
     let computed = s as () => any
     // @ts-expect-error
     a = () => {
-      if (!root || _version !== version) {
+      if (_version !== version || !root) {
         let prevPubs = pubs
         pubs = null
+
         if (_pubs.length === 0 || _pubs.some((el) => el.a() !== el.s)) {
           pubs = _pubs = []
           let newState = computed()
@@ -75,7 +76,7 @@ export let act: {
 
       pubs?.push({ a, s })
 
-      if (root && _version !== version) {
+      if (_version !== version && root) {
         _version = version
         a._e.push(root)
         root._v.push(a)
