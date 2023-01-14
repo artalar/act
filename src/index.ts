@@ -61,10 +61,8 @@ export let act: {
     a = (...args: any[]) => {
       if (args.length && args[0] !== s) {
         s = args[0]
-        queue.push(a._e)
-        a._e = []
 
-        if (queue.length === 1) {
+        if (queue.push(a._e) === 1) {
           act.notify(() => {
             ++version
             for (let effects of queue.splice(0)) {
@@ -72,6 +70,8 @@ export let act: {
             }
           })
         }
+
+        a._e = []
       }
 
       pubs?.push({ a, s })
