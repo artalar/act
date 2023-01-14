@@ -63,11 +63,14 @@ export let act: {
         queue.push(a._e)
         a._e = []
 
-        act.notify(() => {
-          const _queue = queue
-          queue = []
-          for (let effects of _queue) for (let effect of effects) effect()
-        })
+        if (queue.length === 1) {
+          act.notify(() => {
+            ++version
+            for (let effects of queue.splice(0)) {
+              for (let effect of effects) effect()
+            }
+          })
+        }
       }
 
       pubs?.push({ a, s })
@@ -84,24 +87,21 @@ export let act: {
   }
 
   a.subscribe = (cb) => {
-    let lastQueu: any
-    let lastState: any = {}
+    let lastState: any = cb
     // @ts-expect-error
     let effect: Effect = () => {
-      if (lastQueu === queue) return
-      lastQueu = queue
+      if (_version !== version || lastState !== s) {
+        ++version
 
-      ++version
+        let prevRoot = root
+        root = effect
 
-      let prevRoot = root
-      root = effect
-
-      effect._v = []
-      if (lastState !== a()) cb((lastState = s))
-      root = prevRoot
+        effect._v = []
+        if (lastState !== a()) cb((lastState = s))
+        root = prevRoot
+      }
     }
     effect()
-    lastQueu = null
 
     return () => {
       for (let a of effect._v) a._e.splice(a._e.indexOf(effect), 1)

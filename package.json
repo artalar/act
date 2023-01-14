@@ -1,6 +1,6 @@
 {
   "name": "@artalar/act",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "private": false,
   "sideEffects": false,
   "description": "act",
@@ -18,8 +18,8 @@
   ],
   "scripts": {
     "prepublishOnly": "npm run test && npm run build",
-    "build": "microbundle --cwd jsx --generateTypes false && microbundle",
-    "test": "npx tsx src/index.test.ts"
+    "build": "microbundle",
+    "test": "tsx src/index.test.ts"
   },
   "author": "artalar",
   "maintainers": [
@@ -36,13 +36,10 @@
   "bugs": {
     "url": "https://github.com/artalar/act/issues"
   },
-  "homepage": "https://github.com/artalar/act/packages/act",
+  "homepage": "https://github.com/artalar/act",
   "files": [
     "/build",
-    "/jsx",
-    "/package.json",
-    "/README.md",
-    "/src"
+    "/package.json"
   ],
   "devDependencies": {
     "microbundle": "^0.15.1",
