@@ -4,7 +4,7 @@
   "private": true,
   "sideEffects": false,
   "description": "Act-compatible JSX renderer",
-  "source": "./index.ts",
+  "source": "./src/index.ts",
   "exports": {
     "require": "./build/index.js",
     "default": "./build/index.modern.mjs"
@@ -17,7 +17,31 @@
   "browserslist": [
     "last 10 chrome versions"
   ],
-  "peerDependencies": {
-    "@artalar/act": "^2.0.0"
-  }
+  "scripts": {
+    "build": "microbundle jsx --generateTypes false"
+  },
+  "author": "artalar",
+  "maintainers": [
+    {
+      "name": "artalar",
+      "url": "https://github.com/artalar"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/artalar/act.git"
+  },
+  "bugs": {
+    "url": "https://github.com/artalar/act/issues"
+  },
+  "homepage": "https://github.com/artalar/act/jsx",
+  "dependencies": {
+    "@artalar/act": "^2.0.0",
+    "csstype": "^3.1.1"
+  },
+  "files": [
+    "/build",
+    "/jsx.d.ts",
+    "/package.json"
+  ]
 }
