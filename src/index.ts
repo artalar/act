@@ -2,7 +2,6 @@ interface Pubs extends Array<{ a: /* act */ () => any; s: /* state */ any }> {}
 
 interface Effect {
   (): void
-  _v: /* leafs */ Array<ActValue>
 }
 
 interface Subscribable<T = any> {
@@ -11,16 +10,20 @@ interface Subscribable<T = any> {
 
 export interface ActValue<T = any> extends Subscribable<T> {
   (state?: T): T
-  _e: /* roots */ Array<Effect>
 }
 export interface ActComputed<T = any> extends Subscribable<T> {
   (): T
 }
 
+// a subscriber - source of truth
 let root: null | Effect = null
+// a subscriber to unsubscribe
+let unroot: null | Effect = null
+// list of a publishers from a computed in prev stack step
 let pubs: null | Pubs = null
-// global `dirty` flag used to cache visited nodes during invalidation
+// global `dirty` flag used to cache visited nodes during it invalidation by a subscriber
 let version = 0
+// effects queue for a batch, also used as a cache key of a transaction
 let queue: Array<Array<() => any>> = []
 
 // @ts-expect-error
@@ -47,6 +50,7 @@ export let act: {
           let newState = computed()
           if (_version === -1 || !equal?.(s, newState)) s = newState
         }
+
         pubs = prevPubs
 
         _version = version
@@ -57,55 +61,66 @@ export let act: {
       return s
     }
   } else {
+    let effects: any[] = []
     // @ts-expect-error
-    a = (...args: any[]) => {
-      if (args.length && args[0] !== s) {
-        s = args[0]
+    a = (newState) => {
+      if (newState !== undefined && newState !== s) {
+        s = newState
 
-        if (queue.push(a._e) === 1) {
+        if (queue.push(effects) === 1) {
           act.notify(() => {
-            ++version
-            for (let effects of queue.splice(0)) {
+            const iterator = queue
+
+            queue = []
+
+            for (let effects of iterator) {
               for (let effect of effects) effect()
             }
           })
         }
 
-        a._e = []
+        effects = []
       }
 
       pubs?.push({ a, s })
 
-      if (_version !== version && root) {
+      if (_version !== version) {
         _version = version
-        a._e.push(root)
-        root._v.push(a)
+        if (unroot) effects.splice(effects.indexOf(unroot), 1)
+        else if (root) effects.push(root)
       }
 
       return s
     }
-    a._e = []
   }
 
   a.subscribe = (cb) => {
+    let lastQueue: any = cb
     let lastState: any = cb
-    // @ts-expect-error
     let effect: Effect = () => {
-      if (_version !== version || lastState !== s) {
+      if (lastQueue !== queue) {
+        lastQueue = queue
+
         ++version
 
         let prevRoot = root
         root = effect
 
-        effect._v = []
-        if (lastState !== a()) cb((lastState = s))
-        root = prevRoot
+        try {
+          if (lastState !== a()) cb((lastState = s))
+        } finally {
+          root = prevRoot
+        }
       }
     }
     effect()
 
+    // FIXME next tick
     return () => {
-      for (let a of effect._v) a._e.splice(a._e.indexOf(effect), 1)
+      ++version
+      unroot = effect
+      a()
+      unroot = null
     }
   }
 
