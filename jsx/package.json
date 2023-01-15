@@ -4,7 +4,7 @@
   "private": false,
   "sideEffects": false,
   "description": "Act-compatible JSX renderer",
-  "source": "./src/index.ts",
+  "source": "src/index.ts",
   "exports": {
     "require": "./build/index.js",
     "default": "./build/index.modern.mjs"
@@ -18,7 +18,8 @@
     "last 10 chrome versions"
   ],
   "scripts": {
-    "build": "microbundle jsx --generateTypes false"
+    "prepublishOnly": "npm run build",
+    "build": "microbundle --generateTypes false"
   },
   "author": "artalar",
   "maintainers": [
