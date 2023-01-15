@@ -14,7 +14,7 @@ npm i @artalar/act
 
 Pass initial value to `act` function to create mutable observer or pass a callback to create a computed observer. You could mutate observer by call it with a new value. All observers are lazy and recalculates only when has a subscribtion. You could read acts (lets call it "act" / "acts") by call it as a function. Act reading inside a computer is reactive.
 
-All updates are butch and will be applied in the next microtask. So you can update multiple acts synchronously and all computed will callculate and subscribers will be notified only once. You could redefine this behavior by overriding `act.notify` method.
+All updates are butch and will be applied in the next microtask. So you can update multiple acts synchronously and all computed will callculate and subscribers will be notified only once. You could redefine this behavior by [overriding `act.notify` method](#sync-batch).
 
 > See [React example below](#react-example).
 
@@ -155,20 +155,11 @@ Act provides a compatible subscription interface, so you can use the `$` prefix 
 
 ### Sync batch
 
-You could specify your own batch function by redefining `act.notify`. For example, here is `sync` helper which allow you to collect all updates and compute reactions immidialty.
+You could specify your own batch function by redefining `act.notify`. By default `act.notify` scheduled to the next tick, but you could handle it and delay for a more time or call it synchronously to call subscribers immediately.
 
 ```ts
-const sync = (cb: () => any) => {
-  let { notify } = act
-  let run: () => any
-  act.notify = (_run) => (run = _run)
-  try {
-    cb()
-  } finally {
-    act.notify = notify
-  }
-  run!()
-}
+const { notify } = act
+act.notify = () => requestAnimationFrame(notify)
 ```
 
 ## How is it so small and so fast?
