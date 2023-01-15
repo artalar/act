@@ -3,18 +3,6 @@ import * as assert from 'uvu/assert'
 
 import { act } from './index'
 
-const sync = (cb: () => any) => {
-  let { notify } = act
-  let run: () => any
-  act.notify = (_run) => (run = _run)
-  try {
-    cb()
-  } finally {
-    act.notify = notify
-  }
-  run!()
-}
-
 test('read outside effect stale computed', () => {
   const a = act(0)
   const b = () => a()
@@ -48,30 +36,54 @@ test('https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn', () => {
   let I = G.subscribe((v) => res.push(v))
   let J = F.subscribe((v) => res.push(hard(v, 'J')))
 
-  let i = 4
+  let i = 2
   while (--i) {
     res.length = 0
-    sync(() => {
-      B(1)
-      A(1 + i * 2)
-    })
+    B(1)
+    A(1 + i * 2)
+    act.notify()
 
-    sync(() => {
-      A(2 + i * 2)
-      B(2)
-    })
+    A(2 + i * 2)
+    B(2)
+    act.notify()
 
+    assert.is(res.length, 4)
     assert.equal(res, [3198, 1601, 3195, 1598])
   }
 })
 
-test('should not store duplicate effects', () => {
-  const a = act(0)
-  act(() => {
-    for (let i = 0; i < 10; i++) a()
-  }).subscribe(() => {})
+test('throw should not broke linking', () => {
+  try {
+    // @ts-expect-error
+    act(() => ({}.a.b)).subscribe(() => {})
+  } catch {}
 
-  assert.is(a._e.length, 1)
+  const A = act(0)
+  const B = act(() => A())
+  const C = act(() => A())
+  C.subscribe((c) => {})
+
+  A(1)
+  assert.equal([A(), B(), C()], [1, 1, 1])
+})
+
+test('redefine act.notify', async () => {
+  const { notify } = act
+  act.notify = () => {
+    setTimeout(notify)
+  }
+
+  const a = act(0)
+  let calls = 0
+  a.subscribe(() => calls++)
+
+  assert.is(calls, 1)
+
+  a(123)
+  await 0
+  assert.is(calls, 1)
+  await new Promise(r => setTimeout(r))
+  assert.is(calls, 2)
 })
 
 test.run()

@@ -31,7 +31,7 @@ export let act: {
   <T>(computed: () => T, equal?: (prev: T, next: T) => boolean): ActComputed<T>
   <T>(state: T): ActValue<T>
 
-  notify: (cb: () => void) => void
+  notify: () => void
 } = (s, equal?: (prev: any, next: any) => boolean): any => {
   let _version = -1
   let a: ActValue<any> & ActComputed<any>
@@ -67,17 +67,7 @@ export let act: {
       if (newState !== undefined && newState !== s) {
         s = newState
 
-        if (queue.push(effects) === 1) {
-          act.notify(() => {
-            const iterator = queue
-
-            queue = []
-
-            for (let effects of iterator) {
-              for (let effect of effects) effect()
-            }
-          })
-        }
+        if (queue.push(effects) === 1) Promise.resolve().then(act.notify)
 
         effects = []
       }
@@ -115,7 +105,7 @@ export let act: {
     }
     effect()
 
-    // FIXME next tick
+    // TODO next tick?
     return () => {
       ++version
       unroot = effect
@@ -126,4 +116,12 @@ export let act: {
 
   return a
 }
-act.notify = (cb) => Promise.resolve().then(cb)
+act.notify = () => {
+  const iterator = queue
+
+  queue = []
+
+  for (let effects of iterator) {
+    for (let effect of effects) effect()
+  }
+}
