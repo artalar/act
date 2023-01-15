@@ -1,6 +1,6 @@
 {
   "name": "@artalar/act-jsx",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": false,
   "sideEffects": false,
   "description": "Act-compatible JSX renderer",
@@ -12,7 +12,7 @@
   "main": "./build/index.js",
   "module": "./build/index.module.js",
   "unpkg": "./build/index.umd.js",
-  "types": "./jsx.d.ts",
+  "types": "./index.d.ts",
   "license": "MIT",
   "browserslist": [
     "last 10 chrome versions"
@@ -36,11 +36,12 @@
   },
   "homepage": "https://github.com/artalar/act/jsx",
   "dependencies": {
-    "@artalar/act": "^2.0.0",
+    "@artalar/act": "^3.0.0",
     "csstype": "^3.1.1"
   },
   "files": [
     "/build",
+    "/index.d.ts",
     "/jsx.d.ts",
     "/package.json"
   ]

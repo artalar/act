@@ -8,6 +8,7 @@ export let h = (tag: any, props: Record<string, any>, ...children: any[]) => {
   for (let k in props) {
     let prop = props[k]
     if (typeof prop?.subscribe === 'function') {
+      // TODO rewrite attribute even if state not changed
       var un = prop.subscribe((v: any) =>
         !un || element.isConnected ? (element[k] = v) : un(),
       )
