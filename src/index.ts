@@ -41,14 +41,16 @@ export let act: {
     let computed = s as () => any
     // @ts-expect-error
     a = () => {
-      if (_version !== version || !root) {
+      if (_version !== version || root === null) {
         let prevPubs = pubs
         pubs = null
 
         if (_pubs.length === 0 || _pubs.some((el) => el.a() !== el.s)) {
           pubs = _pubs = []
           let newState = computed()
-          if (_version === -1 || !equal?.(s, newState)) s = newState
+          if (_version === -1 || equal === undefined || !equal(s, newState)) {
+            s = newState
+          }
         }
 
         pubs = prevPubs
