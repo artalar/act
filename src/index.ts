@@ -1,5 +1,3 @@
-interface Pubs extends Array<{ a: /* act */ () => any; s: /* state */ any }> {}
-
 interface Subscriber {
   (): void
 }
@@ -20,7 +18,8 @@ let root: null | Subscriber = null
 // a subscriber to unsubscribe
 let unroot: null | Subscriber = null
 // list of a publishers from a computed in prev stack step
-let pubs: null | Pubs = null
+// we store a structure here (i=dep, i+1=depState)
+let pubs: null | Array<any> = null
 // global `dirty` flag used to cache visited nodes during it invalidation by a subscriber
 let version = 0
 // subscribers queue for a batch, also used as a cache key of a transaction
@@ -37,7 +36,7 @@ export let act: {
   let a: ActValue<any> & ActComputed<any>
 
   if (typeof s === 'function') {
-    let _pubs: Pubs = []
+    let _pubs: Array<any> = []
     let computed = s as () => any
     // @ts-expect-error
     a = () => {
@@ -45,7 +44,12 @@ export let act: {
         let prevPubs = pubs
         pubs = null
 
-        if (_pubs.length === 0 || _pubs.some((el) => el.a() !== el.s)) {
+        let isActual = _pubs.length > 0
+        for (let i = 0; isActual && i < _pubs.length; i += 2) {
+          isActual = _pubs[i]() === _pubs[i + 1]
+        }
+
+        if (!isActual) {
           pubs = _pubs = []
           let newState = computed()
           if (_version === -1 || equal === undefined || !equal(s, newState)) {
@@ -58,7 +62,7 @@ export let act: {
         _version = version
       }
 
-      pubs?.push({ a, s })
+      pubs?.push(a, s)
 
       return s
     }
@@ -74,7 +78,7 @@ export let act: {
         subscribers = new Set()
       }
 
-      pubs?.push({ a, s })
+      pubs?.push(a, s)
 
       if (_version !== version) {
         _version = version
