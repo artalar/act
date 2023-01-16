@@ -182,18 +182,18 @@ However, [Reatom](https://www.reatom.dev/) combines both approaches and will opt
 
 ### Algorithm
 
-![](./assets/graph_example.svg)
+<!-- ![](./assets/graph_example.svg) -->
 
-Subscriber is the source of truth. Subscriber pulls a computer, and the computer collects all used dependencies and its states (green arrows).
+Subscriber is the source of truth. Subscriber pulls a computer, and the computer collects all used dependencies and its states.
 
-When someone tries to read a computer act (state), it first walks through the previous dependencies list and compares the fresh state with the saved state.
-If nothing has changed, it returns the current computed state; otherwise, it runs a user-space computed function first and collects the dependencies list from scratch.
+When someone tries to read a _computer act_ state, it first walks through the previous dependencies list and compares the fresh state with the saved state.
+If nothing has changed, it returns the current computed state; otherwise, it runs a passed computed function first and collects the dependencies list from scratch.
 
-Each touched value act saves (red arrows) the current subscriber (to feature update notification).
+Each touched _value act_ saves the current subscriber (to feature update notification) and add itself to subscriber values list (to unsubscribe).
 
-Every subscriber should traverse the whole dependencies graph to be added to all depending value acts.
+Every subscriber should traverse the whole dependencies graph to be linked with all depending value acts.
 
-When a value act receives an update, it clears the subscribers list and calls them.
+When a value act receives an update, it clears the subscribers list and calls them. Each subscriber clears self values list to collect it from scratch and prevent memory leaks in unused value acts.
 
 As you might have noticed, all links are immutable. There is no cache invalidation and no memory or complexity overhead.
 
@@ -203,16 +203,3 @@ The main limitation is a computer reading out of reactive notification.
 As we can only have visiting cache during invalidation, each invalidation invalidates the cache of other invalidation.
 It means that the update of one graph will drop the visited cache of other graph.
 However, it is a rare case in a fully reactive system, and the invalidation itself is cheap.
-
-Another limitation is a lazy unsubscription of outdated branches. If you have an update which caused a some unupdated ActValue unusing, the link to the subscription still stay in the inactive ActValue.
-
-```js
-const a = act(0)
-const b = act(0)
-act(() => b() || a()).subscribe()
-// `a` and `b` store the subscription
-b(123)
-// `a` and `b` still store the subscription
-a(123)
-// now only `b` store the subscription
-```

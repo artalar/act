@@ -67,7 +67,30 @@ test('throw should not broke linking', () => {
   assert.equal([A(), B(), C()], [1, 1, 1])
 })
 
+test('should not store duplicate effects', () => {
+  const a = act(0)
+  act(() => {
+    for (let i = 0; i < 10; i++) a()
+  }).subscribe(() => {})
+
+  assert.is(a._s.size, 1)
+})
+
+test('should not stale subscribtion', () => {
+  const a = act(0)
+  const b = act(0)
+  act(() => b() || a()).subscribe(() => {})
+
+  assert.is(a._s.size, 1)
+  b(123)
+  act.notify()
+  assert.is(a._s.size, 0)
+})
+
 test('redefine act.notify', async () => {
+  // delay this test to make other sync test cleaner
+  await new Promise((r) => setTimeout(r))
+
   const { notify } = act
   act.notify = () => {
     setTimeout(notify)
@@ -82,7 +105,7 @@ test('redefine act.notify', async () => {
   a(123)
   await 0
   assert.is(calls, 1)
-  await new Promise(r => setTimeout(r))
+  await new Promise((r) => setTimeout(r))
   assert.is(calls, 2)
 })
 

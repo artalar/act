@@ -1,5 +1,6 @@
 interface Subscriber {
   (): void
+  _v: Array<ActValue>
 }
 
 interface Subscribable<T = any> {
@@ -8,6 +9,7 @@ interface Subscribable<T = any> {
 
 export interface ActValue<T = any> extends Subscribable<T> {
   (state?: T): T
+  _s: Set<Subscriber>
 }
 export interface ActComputed<T = any> extends Subscribable<T> {
   (): T
@@ -15,8 +17,6 @@ export interface ActComputed<T = any> extends Subscribable<T> {
 
 // a subscriber - source of truth
 let root: null | Subscriber = null
-// a subscriber to unsubscribe
-let unroot: null | Subscriber = null
 // list of a publishers from a computed in prev stack step
 // we store a structure here (i=dep, i+1=depState)
 let pubs: null | Array<any> = null
@@ -67,32 +67,35 @@ export let act: {
       return s
     }
   } else {
-    let subscribers = new Set<any>()
     // @ts-expect-error
     a = (newState) => {
       if (newState !== undefined && newState !== s) {
         s = newState
 
-        if (queue.push(subscribers) === 1) Promise.resolve().then(act.notify)
+        if (queue.push(a._s) === 1) Promise.resolve().then(act.notify)
 
-        subscribers = new Set()
+        a._s = new Set()
       }
 
       pubs?.push(a, s)
 
       if (_version !== version) {
         _version = version
-        if (unroot) subscribers.delete(unroot)
-        else if (root) subscribers.add(root)
+        if (root) {
+          a._s.add(root)
+          root._v.push(a)
+        }
       }
 
       return s
     }
+    a._s = new Set()
   }
 
   a.subscribe = (cb) => {
     let lastQueue: any = cb
     let lastState: any = cb
+    // @ts-expect-error
     let subscriber: Subscriber = () => {
       if (lastQueue !== queue) {
         lastQueue = queue
@@ -102,6 +105,9 @@ export let act: {
         let prevRoot = root
         root = subscriber
 
+        un()
+        subscriber._v = []
+
         try {
           if (lastState !== a()) cb((lastState = s))
         } finally {
@@ -109,15 +115,18 @@ export let act: {
         }
       }
     }
+    subscriber._v = []
+
+    const un = () => {
+      for (const val of subscriber._v) {
+        val._s.delete(subscriber)
+      }
+    }
+
     subscriber()
 
     // TODO next tick?
-    return () => {
-      ++version
-      unroot = subscriber
-      a()
-      unroot = null
-    }
+    return un
   }
 
   return a
