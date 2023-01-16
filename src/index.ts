@@ -24,7 +24,7 @@ let pubs: null | Pubs = null
 // global `dirty` flag used to cache visited nodes during it invalidation by a subscriber
 let version = 0
 // effects queue for a batch, also used as a cache key of a transaction
-let queue: Array<Array<() => any>> = []
+let queue: Array<Set<() => any>> = []
 
 // @ts-expect-error
 export let act: {
@@ -61,7 +61,7 @@ export let act: {
       return s
     }
   } else {
-    let effects: any[] = []
+    let effects = new Set<any>()
     // @ts-expect-error
     a = (newState) => {
       if (newState !== undefined && newState !== s) {
@@ -69,15 +69,15 @@ export let act: {
 
         if (queue.push(effects) === 1) Promise.resolve().then(act.notify)
 
-        effects = []
+        effects = new Set()
       }
 
       pubs?.push({ a, s })
 
       if (_version !== version) {
         _version = version
-        if (unroot) effects.splice(effects.indexOf(unroot), 1)
-        else if (root) effects.push(root)
+        if (unroot) effects.delete(unroot)
+        else if (root) effects.add(root)
       }
 
       return s
