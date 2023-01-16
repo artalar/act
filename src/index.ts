@@ -1,6 +1,6 @@
 interface Pubs extends Array<{ a: /* act */ () => any; s: /* state */ any }> {}
 
-interface Effect {
+interface Subscriber {
   (): void
 }
 
@@ -16,14 +16,14 @@ export interface ActComputed<T = any> extends Subscribable<T> {
 }
 
 // a subscriber - source of truth
-let root: null | Effect = null
+let root: null | Subscriber = null
 // a subscriber to unsubscribe
-let unroot: null | Effect = null
+let unroot: null | Subscriber = null
 // list of a publishers from a computed in prev stack step
 let pubs: null | Pubs = null
 // global `dirty` flag used to cache visited nodes during it invalidation by a subscriber
 let version = 0
-// effects queue for a batch, also used as a cache key of a transaction
+// subscribers queue for a batch, also used as a cache key of a transaction
 let queue: Array<Set<() => any>> = []
 
 // @ts-expect-error
@@ -61,23 +61,23 @@ export let act: {
       return s
     }
   } else {
-    let effects = new Set<any>()
+    let subscribers = new Set<any>()
     // @ts-expect-error
     a = (newState) => {
       if (newState !== undefined && newState !== s) {
         s = newState
 
-        if (queue.push(effects) === 1) Promise.resolve().then(act.notify)
+        if (queue.push(subscribers) === 1) Promise.resolve().then(act.notify)
 
-        effects = new Set()
+        subscribers = new Set()
       }
 
       pubs?.push({ a, s })
 
       if (_version !== version) {
         _version = version
-        if (unroot) effects.delete(unroot)
-        else if (root) effects.add(root)
+        if (unroot) subscribers.delete(unroot)
+        else if (root) subscribers.add(root)
       }
 
       return s
@@ -87,14 +87,14 @@ export let act: {
   a.subscribe = (cb) => {
     let lastQueue: any = cb
     let lastState: any = cb
-    let effect: Effect = () => {
+    let subscriber: Subscriber = () => {
       if (lastQueue !== queue) {
         lastQueue = queue
 
         ++version
 
         let prevRoot = root
-        root = effect
+        root = subscriber
 
         try {
           if (lastState !== a()) cb((lastState = s))
@@ -103,12 +103,12 @@ export let act: {
         }
       }
     }
-    effect()
+    subscriber()
 
     // TODO next tick?
     return () => {
       ++version
-      unroot = effect
+      unroot = subscriber
       a()
       unroot = null
     }
@@ -121,7 +121,7 @@ act.notify = () => {
 
   queue = []
 
-  for (let effects of iterator) {
-    for (let effect of effects) effect()
+  for (let subscribers of iterator) {
+    for (let subscriber of subscribers) subscriber()
   }
 }
