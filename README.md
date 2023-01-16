@@ -179,3 +179,27 @@ Act does not use bidirectional links in dependency graphs and doesn't need to in
 But there is one limitation: as we don't have cross-links and invalidation states, if we want to read an act without subsciption, we need to run all invalidation logic each time. And there is another performance. Because dependency setters need to know about each subscriber, each subscriber should traverse the whole graph every time and if you have one complex act with many subscribers it would not be perfectly optimal. The good news are: 1) this is a rare case; 2) the whole graph traversal is probably cheap thanks to JIT.
 
 However, [Reatom](https://www.reatom.dev/) combines both approaches and will optimize all your computations in the most complex cases, allowing you to inspect immutable snaphots of any update. If you need something more feature-rich, have a look at it.
+
+### Algoritm
+
+![](./assets/graph_example.svg)
+
+Subscriber is the source of truth. Subscriber pulls a computer, and the computer collects all used dependencies and its states (green arrows).
+
+When someone tries to read a computer actor (state), it first walks through the previous dependencies list and compares the fresh state with the saved state.
+If nothing has changed, it returns the current computed state; otherwise, it runs a user-space computed function first and collects the dependencies list from scratch.
+
+Each touched value actor saves (red arrows) the current subscriber (to feature update notification).
+
+Every subscriber should traverse the whole dependencies graph to be added to all depending value actors.
+
+When a value actor receives an update, it clears the subscribers list and calls them.
+
+As you might have noticed, all links are immutable. There is no cache invalidation and no memory or complexity overhead.
+
+Every traverse (subscription invalidation) has a version which helps to cache visited actors.
+
+The main limitation is a computer reading out of reactive notification.
+As we can only have visiting cache during invalidation, each invalidation invalidates the cache of other invalidation.
+It means that the update of one graph will drop the visited cache of other graph.
+However, it is a rare case in a fully reactive system, and the invalidation itself is cheap.
