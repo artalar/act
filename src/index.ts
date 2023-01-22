@@ -1,142 +1,199 @@
+// #region TYPES
+
+/** Base mutable reactive primitive, a leaf of reactive graph */
+export interface Stated<T = unknown> {
+  get(): T
+
+  set(newValue: T): T
+
+  subscribe(cb: (state: T) => void): Unsubscribe
+
+  /** Side-effects */
+  __subscribers: Set<Subscriber>
+}
+
+/** Readonly reactive memoized selector */
+export interface Computed<T = unknown> {
+  get(): T
+
+  subscribe(cb: (state: T) => void): Unsubscribe
+
+  /** List of used dependencies to memorize computed function */
+  __dependencies: Dependencies
+}
+
+interface Unsubscribe {
+  (): void
+}
+
 interface Subscriber {
   (): void
-  _v: Array<ActValue>
+  __stateds: Array<Stated>
 }
 
-interface Subscribable<T = any> {
-  subscribe(cb: (state: T) => any): () => void
+interface Dependencies
+  extends Array<{
+    /** Pulled dependency */
+    dep: Stated | Computed
+    /** The dependency returned state */
+    state: unknown
+  }> {}
+
+// #endregion
+
+/** subscribers from all touched states */
+let batchQueue: Stated['__subscribers'] = new Set()
+
+/** stack-based parent ref to silently link nodes */
+let parentDeps: null | Dependencies = null
+
+export const stated = <T>(state: T): Stated<T> => {
+  return {
+    get() {
+      parentDeps?.push({ dep: this, state })
+
+      return state
+    },
+
+    set(newState) {
+      if (!Object.is(state, newState)) {
+        state = newState
+
+        if (batchQueue.size === 0) notify.schedule()
+
+        this.__subscribers.forEach((subscriber) => batchQueue.add(subscriber))
+
+        this.__subscribers = new Set()
+      }
+
+      return state
+    },
+
+    // @ts-expect-error
+    subscribe,
+
+    __subscribers: new Set(),
+  }
 }
 
-export interface ActValue<T = any> extends Subscribable<T> {
+export const computed = <T>(
+  computed: () => T,
+  equal?: (prev: T, next: T) => boolean,
+): Computed<T> => {
+  let state: T
+  let lastDeps: typeof parentDeps = []
+
+  return {
+    get() {
+      if (lastDeps !== parentDeps) {
+        if (parentDeps) lastDeps = parentDeps
+        const prevDeps = parentDeps
+        parentDeps = null
+
+        try {
+          if (
+            this.__dependencies.length === 0 ||
+            this.__dependencies.some(({ dep, state }) => dep.get() !== state)
+          ) {
+            parentDeps = this.__dependencies = []
+            const newState = computed()
+            if (
+              state === undefined ||
+              equal === undefined ||
+              !equal(state, newState)
+            ) {
+              state = newState
+            }
+          }
+
+          prevDeps?.push({ dep: this, state })
+        } finally {
+          parentDeps = prevDeps
+        }
+      }
+
+      return state
+    },
+
+    // @ts-expect-error
+    subscribe,
+
+    __dependencies: [],
+  }
+}
+
+function subscribe(this: Stated | Computed, cb: (state: unknown) => void) {
+  let lastState: unknown = Symbol()
+
+  const subscriber: Subscriber = () => {
+    const newState = this.get()
+
+    un()
+    subscriber.__stateds = []
+
+    const stack = new Set<Computed['__dependencies']>()
+    const add = (dep: Stated | Computed) => {
+      if ('__dependencies' in dep) stack.add(dep.__dependencies)
+      else {
+        dep.__subscribers.add(subscriber)
+        subscriber.__stateds.push(dep)
+      }
+    }
+    add(this)
+    for (const deps of stack) {
+      for (const { dep } of deps) add(dep)
+    }
+
+    if (newState !== lastState) cb((lastState = newState))
+  }
+  subscriber.__stateds = []
+
+  const un = () => {
+    for (const stated of subscriber.__stateds) {
+      stated.__subscribers.delete(subscriber)
+    }
+  }
+
+  subscriber()
+
+  return un
+}
+
+export const notify = () => {
+  const iterator = batchQueue
+
+  batchQueue = new Set()
+
+  for (let subscriber of iterator) subscriber()
+}
+notify.schedule = () => {
+  Promise.resolve().then(notify)
+}
+
+
+// -----------------
+
+export interface ActValue<T = any> extends Stated<T> {
   (state?: T): T
-  _s: Set<Subscriber>
 }
-export interface ActComputed<T = any> extends Subscribable<T> {
+export interface ActComputed<T = any> extends Computed<T> {
   (): T
 }
-
-// a subscriber - source of truth
-let root: null | Subscriber = null
-// list of a publishers from a computed in prev stack step
-// we store a structure here (i=dep, i+1=depState)
-let pubs: null | Array<any> = null
-// global `dirty` flag used to cache visited nodes during it invalidation by a subscriber
-let version = 0
-// subscribers queue for a batch, also used as a cache key of a transaction
-let queue: Array<Set<() => any>> = []
 
 // @ts-expect-error
 export let act: {
   <T>(computed: () => T, equal?: (prev: T, next: T) => boolean): ActComputed<T>
   <T>(state: T): ActValue<T>
-
-  notify: () => void
-} = (s, equal?: (prev: any, next: any) => boolean): any => {
-  let _version = -1
-  let a: ActValue<any> & ActComputed<any>
-
+  notify: typeof notify
+} = (s: any, equal) => {
   if (typeof s === 'function') {
-    let _pubs: Array<any> = []
-    let computed = s as () => any
-    // @ts-expect-error
-    a = () => {
-      if (_version !== version || root === null) {
-        let prevPubs = pubs
-        pubs = null
-
-        let isActual = _pubs.length > 0
-        for (let i = 0; isActual && i < _pubs.length; i += 2) {
-          isActual = _pubs[i]() === _pubs[i + 1]
-        }
-
-        if (!isActual) {
-          pubs = _pubs = []
-          let newState = computed()
-          if (_version === -1 || equal === undefined || !equal(s, newState)) {
-            s = newState
-          }
-        }
-
-        pubs = prevPubs
-
-        _version = version
-      }
-
-      pubs?.push(a, s)
-
-      return s
-    }
-  } else {
-    // @ts-expect-error
-    a = (newState) => {
-      if (newState !== undefined && newState !== s) {
-        s = newState
-
-        if (queue.push(a._s) === 1) Promise.resolve().then(act.notify)
-
-        a._s = new Set()
-      }
-
-      pubs?.push(a, s)
-
-      if (_version !== version) {
-        _version = version
-        if (root) {
-          a._s.add(root)
-          root._v.push(a)
-        }
-      }
-
-      return s
-    }
-    a._s = new Set()
+    const a = computed(s, equal)
+    return Object.assign(a.get.bind(a), a)
   }
-
-  a.subscribe = (cb) => {
-    let lastQueue: any = cb
-    let lastState: any = cb
-    // @ts-expect-error
-    let subscriber: Subscriber = () => {
-      if (lastQueue !== queue) {
-        lastQueue = queue
-
-        ++version
-
-        let prevRoot = root
-        root = subscriber
-
-        un()
-        subscriber._v = []
-
-        try {
-          if (lastState !== a()) cb((lastState = s))
-        } finally {
-          root = prevRoot
-        }
-      }
-    }
-    subscriber._v = []
-
-    const un = () => {
-      for (const val of subscriber._v) {
-        val._s.delete(subscriber)
-      }
-    }
-
-    subscriber()
-
-    // TODO next tick?
-    return un
-  }
-
-  return a
+  const a = stated(s)
+  return Object.assign(
+    (newState?: any) => (newState === undefined ? a.get() : a.set(newState)),
+    a,
+  )
 }
-act.notify = () => {
-  const iterator = queue
-
-  queue = []
-
-  for (let subscribers of iterator) {
-    for (let subscriber of subscribers) subscriber()
-  }
-}
+act.notify = notify

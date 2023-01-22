@@ -1,7 +1,7 @@
 import { test } from 'uvu'
 import * as assert from 'uvu/assert'
 
-import { act } from './index'
+import { act, notify } from './index'
 
 test('read outside effect stale computed', () => {
   const a = act(0)
@@ -41,11 +41,11 @@ test('https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn', () => {
     res.length = 0
     B(1)
     A(1 + i * 2)
-    act.notify()
+    notify()
 
     A(2 + i * 2)
     B(2)
-    act.notify()
+    notify()
 
     assert.is(res.length, 4)
     assert.equal(res, [3198, 1601, 3195, 1598])
@@ -73,7 +73,7 @@ test('should not store duplicate effects', () => {
     for (let i = 0; i < 10; i++) a()
   }).subscribe(() => {})
 
-  assert.is(a._s.size, 1)
+  assert.is(a.__subscribers.size, 1)
 })
 
 test('should not stale subscribtion', () => {
@@ -81,18 +81,17 @@ test('should not stale subscribtion', () => {
   const b = act(0)
   act(() => b() || a()).subscribe(() => {})
 
-  assert.is(a._s.size, 1)
+  assert.is(a.__subscribers.size, 1)
   b(123)
-  act.notify()
-  assert.is(a._s.size, 0)
+  notify()
+  assert.is(a.__subscribers.size, 0)
 })
 
 test('redefine act.notify', async () => {
   // delay this test to make other sync test cleaner
   await new Promise((r) => setTimeout(r))
 
-  const { notify } = act
-  act.notify = () => {
+  notify.schedule = () => {
     setTimeout(notify)
   }
 
