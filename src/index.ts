@@ -42,75 +42,86 @@ interface Dependencies
 // #endregion
 
 /** subscribers from all touched states */
-let batchQueue: Stated['__subscribers'] = new Set()
+let QUEUE: Stated['__subscribers'] = new Set()
 
 /** stack-based parent ref to silently link nodes */
-let parentDeps: null | Dependencies = null
+let DEPS: null | Dependencies = null
 
-export const stated = <T>(state: T): Stated<T> => {
-  return {
-    get() {
-      parentDeps?.push({ dep: this, state })
+/** current invalidated subscriber */
+let SUBSCRIBER: null | Subscriber = null
 
-      return state
-    },
+export const stated = <T>(state: T): Stated<T> => ({
+  get() {
+    DEPS?.push({ dep: this, state })
 
-    set(newState) {
-      if (!Object.is(state, newState)) {
-        state = newState
+    if (SUBSCRIBER && !this.__subscribers.has(SUBSCRIBER)) {
+      this.__subscribers.add(SUBSCRIBER)
+      SUBSCRIBER.__stateds.push(this)
+    }
 
-        if (batchQueue.size === 0) notify.schedule()
+    return state
+  },
 
-        this.__subscribers.forEach((subscriber) => batchQueue.add(subscriber))
+  set(newState) {
+    if (!Object.is(state, newState)) {
+      state = newState
 
-        this.__subscribers = new Set()
-      }
+      if (QUEUE.size === 0) notify.schedule()
 
-      return state
-    },
+      this.__subscribers.forEach((subscriber) => QUEUE.add(subscriber))
 
-    // @ts-expect-error
-    subscribe,
+      this.__subscribers = new Set()
+    }
 
-    __subscribers: new Set(),
-  }
-}
+    return state
+  },
+
+  // @ts-expect-error
+  subscribe,
+
+  __subscribers: new Set(),
+})
 
 export const computed = <T>(
   computed: () => T,
   equal?: (prev: T, next: T) => boolean,
 ): Computed<T> => {
   let state: T
-  let lastDeps: typeof parentDeps = []
+  // visited mark during invalidation from a subscriber
+  let lastStateds: Subscriber['__stateds'] = []
 
   return {
     get() {
-      if (lastDeps !== parentDeps) {
-        if (parentDeps) lastDeps = parentDeps
-        const prevDeps = parentDeps
-        parentDeps = null
+      if (lastStateds !== SUBSCRIBER?.__stateds) {
+        const prevDeps = DEPS
+        DEPS = null
 
         try {
           if (
             this.__dependencies.length === 0 ||
-            this.__dependencies.some(({ dep, state }) => dep.get() !== state)
+            this.__dependencies.some((el) => el.dep.get() !== el.state)
           ) {
-            parentDeps = this.__dependencies = []
+            DEPS = this.__dependencies = []
+
             const newState = computed()
+
             if (
-              state === undefined ||
               equal === undefined ||
+              // first call
+              state === undefined ||
               !equal(state, newState)
             ) {
               state = newState
             }
           }
-
-          prevDeps?.push({ dep: this, state })
         } finally {
-          parentDeps = prevDeps
+          DEPS = prevDeps
         }
+
+        if (SUBSCRIBER) lastStateds = SUBSCRIBER.__stateds
       }
+
+      DEPS?.push({ dep: this, state })
 
       return state
     },
@@ -126,25 +137,18 @@ function subscribe(this: Stated | Computed, cb: (state: unknown) => void) {
   let lastState: unknown = Symbol()
 
   const subscriber: Subscriber = () => {
-    const newState = this.get()
-
     un()
     subscriber.__stateds = []
 
-    const stack = new Set<Computed['__dependencies']>()
-    const add = (dep: Stated | Computed) => {
-      if ('__dependencies' in dep) stack.add(dep.__dependencies)
-      else {
-        dep.__subscribers.add(subscriber)
-        subscriber.__stateds.push(dep)
-      }
-    }
-    add(this)
-    for (const deps of stack) {
-      for (const { dep } of deps) add(dep)
+    SUBSCRIBER = subscriber
+
+    const newState = this.get()
+
+    if (newState !== lastState) {
+      cb((lastState = newState))
     }
 
-    if (newState !== lastState) cb((lastState = newState))
+    SUBSCRIBER = null
   }
   subscriber.__stateds = []
 
@@ -160,16 +164,15 @@ function subscribe(this: Stated | Computed, cb: (state: unknown) => void) {
 }
 
 export const notify = () => {
-  const iterator = batchQueue
+  const iterator = QUEUE
 
-  batchQueue = new Set()
+  QUEUE = new Set()
 
   for (let subscriber of iterator) subscriber()
 }
 notify.schedule = () => {
   Promise.resolve().then(notify)
 }
-
 
 // -----------------
 
