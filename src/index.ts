@@ -41,45 +41,51 @@ interface Dependencies
 // #endregion
 
 /** subscribers from all touched signals */
-let QUEUE = new Set<Subscriber>()
+let QUEUE: Array<Signal['__subscribers']> = []
 
-/** stack-based parent ref to silently link nodes */
-let DEPS: null | Dependencies = null
+/** global queue cache flag */
+let QUEUE_VERSION = 0
 
 /** current invalidated subscriber */
 let SUBSCRIBER: null | Subscriber = null
 
-/** version of traverse (subscription pull) for computed memoization */
-let VERSION = 0
+/** global subscriber pull cache flag */
+let SUBSCRIBER_VERSION = 0
 
-export let signal = <T>(state: T): Signal<T> => ({
-  get value() {
-    DEPS?.push({ dep: this, state: state })
+/** stack-based parent ref to silently link nodes */
+let DEPS: null | Dependencies = null
 
-    if (SUBSCRIBER !== null && !this.__subscribers.has(SUBSCRIBER)) {
-      this.__subscribers.add(SUBSCRIBER)
-      SUBSCRIBER.__signals.push(this)
-    }
+export let signal = <T>(state: T): Signal<T> => {
+  let version = -1
 
-    return state
-  },
+  return {
+    get value() {
+      DEPS?.push({ dep: this, state: state })
 
-  set value(newState) {
-    ++VERSION
+      if (version !== SUBSCRIBER_VERSION && SUBSCRIBER !== null) {
+        version = SUBSCRIBER_VERSION
+        this.__subscribers.add(SUBSCRIBER)
+        SUBSCRIBER.__signals.push(this)
+      }
 
-    state = newState
+      return state
+    },
 
-    if (QUEUE.size === 0) notify.schedule()
+    set value(newState) {
+      ++SUBSCRIBER_VERSION
 
-    for (const subscriber of this.__subscribers) QUEUE.add(subscriber)
+      state = newState
 
-    this.__subscribers = new Set()
-  },
+      if (QUEUE.push(this.__subscribers) === 1) notify.schedule()
 
-  subscribe,
+      this.__subscribers = new Set()
+    },
 
-  __subscribers: new Set(),
-})
+    subscribe,
+
+    __subscribers: new Set(),
+  }
+}
 
 export let computed = <T>(
   computed: () => T,
@@ -90,8 +96,8 @@ export let computed = <T>(
 
   return {
     get value() {
-      if (version !== VERSION) {
-        version = VERSION
+      if (version !== SUBSCRIBER_VERSION) {
+        version = SUBSCRIBER_VERSION
 
         let prevDeps = DEPS
         DEPS = null
@@ -131,22 +137,27 @@ export let computed = <T>(
 }
 
 function subscribe<T>(this: Signal<T> | Computed<T>, cb: (state: T) => void) {
+  let version = -1
   let lastState: unknown = Symbol()
 
   const subscriber: Subscriber = () => {
-    try {
-      VERSION++
+    if (version !== QUEUE_VERSION) {
+      try {
+        version = QUEUE_VERSION
 
-      un()
-      subscriber.__signals = []
+        un()
+        subscriber.__signals = []
 
-      SUBSCRIBER = subscriber
+        SUBSCRIBER = subscriber
 
-      let newState = this.value
+        SUBSCRIBER_VERSION++
 
-      if (newState !== lastState) cb((lastState = newState))
-    } finally {
-      SUBSCRIBER = null
+        let newState = this.value
+
+        if (newState !== lastState) cb((lastState = newState))
+      } finally {
+        SUBSCRIBER = null
+      }
     }
   }
   subscriber.__signals = []
@@ -165,11 +176,14 @@ function subscribe<T>(this: Signal<T> | Computed<T>, cb: (state: T) => void) {
 export let effect = (cb: () => any) => computed(cb).subscribe(() => {})
 
 export const notify = () => {
+  QUEUE_VERSION++
+
   let iterator = QUEUE
 
-  QUEUE = new Set()
+  QUEUE = []
 
-  for (let subscriber of iterator) subscriber()
+  for (let subscribers of iterator)
+    for (let subscriber of subscribers) subscriber()
 }
 notify.schedule = () => {
   Promise.resolve().then(notify)
