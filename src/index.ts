@@ -1,10 +1,8 @@
 // #region TYPES
 
 /** Base mutable reactive primitive, a leaf of reactive graph */
-export interface Stated<T = unknown> {
-  get(): T
-
-  set(newValue: T): T
+export interface Signal<T = unknown> {
+  value: T
 
   subscribe(cb: (state: T) => void): Unsubscribe
 
@@ -14,7 +12,7 @@ export interface Stated<T = unknown> {
 
 /** Readonly reactive memoized selector */
 export interface Computed<T = unknown> {
-  get(): T
+  readonly value: T
 
   subscribe(cb: (state: T) => void): Unsubscribe
 
@@ -28,21 +26,22 @@ interface Unsubscribe {
 
 interface Subscriber {
   (): void
-  __stateds: Array<Stated>
+
+  __signals: Array<Signal>
 }
 
 interface Dependencies
   extends Array<{
     /** Pulled dependency */
-    dep: Stated | Computed
+    dep: Signal | Computed
     /** The dependency returned state */
     state: unknown
   }> {}
 
 // #endregion
 
-/** subscribers from all touched states */
-let QUEUE: Stated['__subscribers'] = new Set()
+/** subscribers from all touched signals */
+let QUEUE = new Set<Subscriber>()
 
 /** stack-based parent ref to silently link nodes */
 let DEPS: null | Dependencies = null
@@ -50,60 +49,61 @@ let DEPS: null | Dependencies = null
 /** current invalidated subscriber */
 let SUBSCRIBER: null | Subscriber = null
 
-export const stated = <T>(state: T): Stated<T> => ({
-  get() {
-    DEPS?.push({ dep: this, state })
+/** version of traverse (subscription pull) for computed memoization */
+let VERSION = 0
 
-    if (SUBSCRIBER && !this.__subscribers.has(SUBSCRIBER)) {
+export let signal = <T>(state: T): Signal<T> => ({
+  get value() {
+    DEPS?.push({ dep: this, state: state })
+
+    if (SUBSCRIBER !== null && !this.__subscribers.has(SUBSCRIBER)) {
       this.__subscribers.add(SUBSCRIBER)
-      SUBSCRIBER.__stateds.push(this)
+      SUBSCRIBER.__signals.push(this)
     }
 
     return state
   },
 
-  set(newState) {
-    if (!Object.is(state, newState)) {
-      state = newState
+  set value(newState) {
+    ++VERSION
 
-      if (QUEUE.size === 0) notify.schedule()
+    state = newState
 
-      this.__subscribers.forEach((subscriber) => QUEUE.add(subscriber))
+    if (QUEUE.size === 0) notify.schedule()
 
-      this.__subscribers = new Set()
-    }
+    for (const subscriber of this.__subscribers) QUEUE.add(subscriber)
 
-    return state
+    this.__subscribers = new Set()
   },
 
-  // @ts-expect-error
   subscribe,
 
   __subscribers: new Set(),
 })
 
-export const computed = <T>(
+export let computed = <T>(
   computed: () => T,
   equal?: (prev: T, next: T) => boolean,
 ): Computed<T> => {
+  let version = -1
   let state: T
-  // visited mark during invalidation from a subscriber
-  let lastStateds: Subscriber['__stateds'] = []
 
   return {
-    get() {
-      if (lastStateds !== SUBSCRIBER?.__stateds) {
-        const prevDeps = DEPS
+    get value() {
+      if (version !== VERSION) {
+        version = VERSION
+
+        let prevDeps = DEPS
         DEPS = null
 
         try {
           if (
             this.__dependencies.length === 0 ||
-            this.__dependencies.some((el) => el.dep.get() !== el.state)
+            this.__dependencies.some((el) => el.state !== el.dep.value)
           ) {
             DEPS = this.__dependencies = []
 
-            const newState = computed()
+            let newState = computed()
 
             if (
               equal === undefined ||
@@ -117,44 +117,43 @@ export const computed = <T>(
         } finally {
           DEPS = prevDeps
         }
-
-        if (SUBSCRIBER) lastStateds = SUBSCRIBER.__stateds
       }
 
-      DEPS?.push({ dep: this, state })
+      DEPS?.push({ dep: this, state: state })
 
       return state
     },
 
-    // @ts-expect-error
     subscribe,
 
     __dependencies: [],
   }
 }
 
-function subscribe(this: Stated | Computed, cb: (state: unknown) => void) {
+function subscribe<T>(this: Signal<T> | Computed<T>, cb: (state: T) => void) {
   let lastState: unknown = Symbol()
 
   const subscriber: Subscriber = () => {
-    un()
-    subscriber.__stateds = []
+    try {
+      VERSION++
 
-    SUBSCRIBER = subscriber
+      un()
+      subscriber.__signals = []
 
-    const newState = this.get()
+      SUBSCRIBER = subscriber
 
-    if (newState !== lastState) {
-      cb((lastState = newState))
+      let newState = this.value
+
+      if (newState !== lastState) cb((lastState = newState))
+    } finally {
+      SUBSCRIBER = null
     }
-
-    SUBSCRIBER = null
   }
-  subscriber.__stateds = []
+  subscriber.__signals = []
 
-  const un = () => {
-    for (const stated of subscriber.__stateds) {
-      stated.__subscribers.delete(subscriber)
+  let un = () => {
+    for (let signal of subscriber.__signals) {
+      signal.__subscribers.delete(subscriber)
     }
   }
 
@@ -163,8 +162,10 @@ function subscribe(this: Stated | Computed, cb: (state: unknown) => void) {
   return un
 }
 
+export let effect = (cb: () => any) => computed(cb).subscribe(() => {})
+
 export const notify = () => {
-  const iterator = QUEUE
+  let iterator = QUEUE
 
   QUEUE = new Set()
 
@@ -173,30 +174,3 @@ export const notify = () => {
 notify.schedule = () => {
   Promise.resolve().then(notify)
 }
-
-// -----------------
-
-export interface ActValue<T = any> extends Stated<T> {
-  (state?: T): T
-}
-export interface ActComputed<T = any> extends Computed<T> {
-  (): T
-}
-
-// @ts-expect-error
-export let act: {
-  <T>(computed: () => T, equal?: (prev: T, next: T) => boolean): ActComputed<T>
-  <T>(state: T): ActValue<T>
-  notify: typeof notify
-} = (s: any, equal) => {
-  if (typeof s === 'function') {
-    const a = computed(s, equal)
-    return Object.assign(a.get.bind(a), a)
-  }
-  const a = stated(s)
-  return Object.assign(
-    (newState?: any) => (newState === undefined ? a.get() : a.set(newState)),
-    a,
-  )
-}
-act.notify = notify

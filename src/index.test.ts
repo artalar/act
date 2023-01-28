@@ -1,16 +1,16 @@
 import { test } from 'uvu'
 import * as assert from 'uvu/assert'
 
-import { act, notify } from './index'
+import { signal, computed, notify } from './index'
 
 test('read outside effect stale computed', () => {
-  const a = act(0)
-  const b = () => a()
+  const a = signal(0)
+  const b = computed(() => a.value)
 
-  assert.is(b(), 0)
+  assert.is(b.value, 0)
 
-  a(1)
-  assert.is(b(), 1)
+  a.value++
+  assert.is(b.value, 1)
 })
 
 test('https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn', () => {
@@ -22,16 +22,18 @@ test('https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn', () => {
 
   const hard = (n: number, l: string) => n + fib(16)
 
-  const A = act(0)
-  const B = act(0)
-  const C = act(() => (A() % 2) + (B() % 2))
-  const D = act(
-    () => numbers.map((i) => i + (A() % 2) - (B() % 2)),
+  const A = signal(0)
+  const B = signal(0)
+  const C = computed(() => (A.value % 2) + (B.value % 2))
+  const D = computed(
+    () => numbers.map((i) => i + (A.value % 2) - (B.value % 2)),
     (l, r) => l.length === r.length && l.every((v, i) => v === r[i]),
   )
-  const E = act(() => hard(C() + A() + D()[0]!, 'E'))
-  const F = act(() => hard(D()[0]! && B(), 'F'))
-  const G = act(() => C() + (C() || E() % 2) + D()[0]! + F())
+  const E = computed(() => hard(C.value + A.value + D.value[0]!, 'E'))
+  const F = computed(() => hard(D.value[0]! && B.value, 'F'))
+  const G = computed(
+    () => C.value + (C.value || E.value % 2) + D.value[0]! + F.value,
+  )
   let H = G.subscribe((v) => res.push(hard(v, 'H')))
   let I = G.subscribe((v) => res.push(v))
   let J = F.subscribe((v) => res.push(hard(v, 'J')))
@@ -39,12 +41,12 @@ test('https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn', () => {
   let i = 2
   while (--i) {
     res.length = 0
-    B(1)
-    A(1 + i * 2)
+    B.value = 1
+    A.value = 1 + i * 2
     notify()
 
-    A(2 + i * 2)
-    B(2)
+    A.value = 2 + i * 2
+    B.value = 2
     notify()
 
     assert.is(res.length, 4)
@@ -58,53 +60,51 @@ test('throw should not broke linking', () => {
     act(() => ({}.a.b)).subscribe(() => {})
   } catch {}
 
-  const A = act(0)
-  const B = act(() => A())
-  const C = act(() => A())
+  const A = signal(0)
+  const B = computed(() => A.value)
+  const C = computed(() => A.value)
   C.subscribe((c) => {})
 
-  A(1)
-  assert.equal([A(), B(), C()], [1, 1, 1])
+  A.value++
+  assert.equal([A.value, B.value, C.value], [1, 1, 1])
 })
 
 test('should not store duplicate effects', () => {
-  const a = act(0)
-  act(() => {
-    for (let i = 0; i < 10; i++) a()
+  const a = signal(0)
+  computed(() => {
+    for (let i = 0; i < 10; i++) a.value
   }).subscribe(() => {})
 
   assert.is(a.__subscribers.size, 1)
 })
 
 test('should not stale subscribtion', () => {
-  const a = act(0)
-  const b = act(0)
-  act(() => b() || a()).subscribe(() => {})
+  const a = signal(0)
+  const b = signal(0)
+  computed(() => b.value || a.value).subscribe(() => {})
 
   assert.is(a.__subscribers.size, 1)
-  b(123)
+  b.value = 123
   notify()
   assert.is(a.__subscribers.size, 0)
 })
 
 test('redefine act.notify', async () => {
   // delay this test to make other sync test cleaner
-  await new Promise((r) => setTimeout(r))
+  await new Promise((r) => setTimeout(r, 10))
 
-  notify.schedule = () => {
-    setTimeout(notify)
-  }
+  notify.schedule = () => setTimeout(notify, 1)
 
-  const a = act(0)
+  const a = signal(0)
   let calls = 0
   a.subscribe(() => calls++)
 
   assert.is(calls, 1)
 
-  a(123)
+  a.value = 123
   await 0
   assert.is(calls, 1)
-  await new Promise((r) => setTimeout(r))
+  await new Promise((r) => setTimeout(r, 1))
   assert.is(calls, 2)
 })
 
