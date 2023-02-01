@@ -1,3 +1,8 @@
+// symbol-observable polyfill from redux https://github.com/reduxjs/redux/blob/master/src/utils/symbol-observable.ts
+// @ts-expect-error "Symbol" maybe undefined on legacy platforms
+const $$observable = /* #__PURE__ */ (() =>
+  (typeof Symbol === 'function' && Symbol.observable) || '@@observable')()
+
 // #region TYPES
 
 interface Subscriber {
@@ -151,6 +156,21 @@ export let act: {
     subscriber()
 
     return un
+  }
+  
+  theAct[$$observable] = {
+    subscribe(observer: unknown) {
+      const unsubscribe = theAct.subscribe((state) => {
+        // @ts-expect-error assume observer is spec-compliant
+        if (observer && observer.next) observer.next(state)
+      })
+        
+      return { unsubscribe }
+    },
+
+    [$$observable]() {
+      return this
+    }
   }
 
   return theAct
