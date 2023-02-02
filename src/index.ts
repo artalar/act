@@ -31,22 +31,22 @@ type Dependencies =
 // #endregion
 
 /** subscribers from all touched signals */
-let QUEUE: Array<Set<Subscriber>> = []
+var QUEUE: Array<Set<Subscriber>> = []
 
 /** global queue cache flag */
-let QUEUE_VERSION = 0
+var QUEUE_VERSION = 0
 
 /** current subscriber during invalidation */
-let SUBSCRIBER: null | Subscriber = null
+var SUBSCRIBER: null | Subscriber = null
 
 /** global subscriber pull cache flag */
-let SUBSCRIBER_VERSION = 0
+var SUBSCRIBER_VERSION = 0
 
 /** stack-based parent ref to silently link nodes */
-let DEPS: null | Dependencies = null
+var DEPS: null | Dependencies = null
 
-// @ts-expect-error `let` is more performant, but broke the types
-export let act: {
+// @ts-expect-error `var` is more performant, but broke the types
+export var act: {
   <T>(computed: () => T, equal?: (prev: T, next: T) => boolean): ActComputed<T>
   <T>(initState: T): ActValue<T>
   notify: {
@@ -54,23 +54,23 @@ export let act: {
     schedule?: null | (() => void)
   }
 } = (init, equal) => {
-  let version = -1
-  let state: any
-  let theAct: ActValue<any> & ActComputed<any>
+  var version = -1
+  var state: any
+  var theAct: ActValue<any> & ActComputed<any>
 
   if (typeof init === 'function') {
-    let deps: Dependencies = []
+    var deps: Dependencies = []
     // @ts-expect-error expected properties declared below
     theAct = () => {
       if (version !== SUBSCRIBER_VERSION) {
         version = SUBSCRIBER_VERSION
 
-        let prevDeps = DEPS
+        var prevDeps = DEPS
         DEPS = null
 
         try {
-          let isActual = deps.length > 0
-          for (let i = 0; isActual && i < deps.length; i += 2) {
+          var isActual = deps.length > 0
+          for (var i = 0; isActual && i < deps.length; i += 2) {
             // @ts-expect-error can't type a structure
             isActual = Object.is(deps[i + 1], deps[i]())
           }
@@ -78,7 +78,7 @@ export let act: {
           if (!isActual) {
             DEPS = deps = []
 
-            let newState = init()
+            var newState = init()
 
             if (
               equal === undefined ||
@@ -129,11 +129,11 @@ export let act: {
   }
 
   theAct.subscribe = (cb) => {
-    let queueVersion = -1
-    let lastState: unknown = {}
+    var queueVersion = -1
+    var lastState: unknown = {}
 
-    // @ts-expect-error `let` could be more performant than `const`
-    let subscriber: Subscriber = () => {
+    // @ts-expect-error `var` could be more performant than `const`
+    var subscriber: Subscriber = () => {
       if (queueVersion !== QUEUE_VERSION) {
         try {
           queueVersion = QUEUE_VERSION
@@ -153,8 +153,8 @@ export let act: {
     }
     subscriber._v = []
 
-    let un = () => {
-      for (let signal of subscriber._v) {
+    var un = () => {
+      for (var signal of subscriber._v) {
         signal._s.delete(subscriber)
       }
     }
@@ -169,12 +169,12 @@ export let act: {
 act.notify = () => {
   QUEUE_VERSION++
 
-  let iterator = QUEUE
+  var iterator = QUEUE
 
   QUEUE = []
 
-  for (let subscribers of iterator) {
-    for (let subscriber of subscribers) subscriber()
+  for (var subscribers of iterator) {
+    for (var subscriber of subscribers) subscriber()
   }
 }
 act.notify.schedule = () => Promise.resolve().then(act.notify)
