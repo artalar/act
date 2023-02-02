@@ -91,9 +91,8 @@ test('redefine act.notify', async () => {
   // delay this test to make other sync test cleaner
   await new Promise((r) => setTimeout(r))
 
-  const { notify } = act
-  act.notify = () => {
-    setTimeout(notify)
+  act.notify.schedule = () => {
+    setTimeout(act.notify)
   }
 
   const a = act(0)

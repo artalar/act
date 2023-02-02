@@ -49,7 +49,10 @@ let DEPS: null | Dependencies = null
 export let act: {
   <T>(computed: () => T, equal?: (prev: T, next: T) => boolean): ActComputed<T>
   <T>(initState: T): ActValue<T>
-  notify: () => void
+  notify: {
+    (): void
+    schedule?: null | (() => void)
+  }
 } = (init, equal) => {
   let version = -1
   let state: any
@@ -106,7 +109,7 @@ export let act: {
 
         state = newState
 
-        if (QUEUE.push(theAct._s) === 1) Promise.resolve().then(act.notify)
+        if (QUEUE.push(theAct._s) === 1) act.notify.schedule?.()
 
         theAct._s = new Set()
       }
@@ -174,3 +177,4 @@ act.notify = () => {
     for (let subscriber of subscribers) subscriber()
   }
 }
+act.notify.schedule = () => Promise.resolve().then(act.notify)
