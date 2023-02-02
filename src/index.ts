@@ -72,7 +72,7 @@ export let act: {
           let isActual = deps.length > 0
           for (let i = 0; isActual && i < deps.length; i += 2) {
             // @ts-expect-error can't type a structure
-            isActual = deps[i + 1] === deps[i]()
+            isActual = Object.is(deps[i + 1], deps[i]())
           }
 
           if (!isActual) {
@@ -103,7 +103,7 @@ export let act: {
     state = init
     // @ts-expect-error expected properties declared below
     theAct = (newState) => {
-      if (newState !== undefined && newState !== state) {
+      if (newState !== undefined && !Object.is(newState, state)) {
         // mark all computeds dirty
         ++SUBSCRIBER_VERSION
 
@@ -130,7 +130,7 @@ export let act: {
 
   theAct.subscribe = (cb) => {
     let queueVersion = -1
-    let lastState: unknown = Symbol()
+    let lastState: unknown = {}
 
     // @ts-expect-error `let` could be more performant than `const`
     let subscriber: Subscriber = () => {
