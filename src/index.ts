@@ -19,13 +19,14 @@ export interface ActComputed<T = unknown> {
 export type Act<T = unknown> = ActValue<T> | ActComputed<T>
 
 /** List of used dependencies to memorize computed function */
-interface Dependencies
-  extends Array<{
-    /** Pulled dependency */
-    act: Act
-    /** The dependency returned state */
-    state: unknown
-  }> {}
+type Dependencies =
+  | []
+  | [
+      /** Pulled dependency */
+      act: Act,
+      /** The dependency returned state */
+      state: unknown,
+    ]
 
 // #endregion
 
@@ -65,7 +66,13 @@ export let act: {
         DEPS = null
 
         try {
-          if (deps.length === 0 || deps.some((el) => el.state !== el.act())) {
+          let isActual = deps.length > 0
+          for (let i = 0; isActual && i < deps.length; i += 2) {
+            // @ts-expect-error can't type a structure
+            isActual = deps[i + 1] === deps[i]()
+          }
+
+          if (!isActual) {
             DEPS = deps = []
 
             let newState = init()
@@ -84,7 +91,8 @@ export let act: {
         }
       }
 
-      DEPS?.push({ act: theAct, state })
+      // @ts-expect-error can't type a structure
+      DEPS?.push(theAct, state)
 
       return state
     }
@@ -98,8 +106,7 @@ export let act: {
 
         state = newState
 
-        if (QUEUE.push(theAct._s) === 1)
-          Promise.resolve().then(act.notify)
+        if (QUEUE.push(theAct._s) === 1) Promise.resolve().then(act.notify)
 
         theAct._s = new Set()
       }
@@ -110,7 +117,8 @@ export let act: {
         SUBSCRIBER._v.push(theAct)
       }
 
-      DEPS?.push({ act: theAct, state })
+      // @ts-expect-error can't type a structure
+      DEPS?.push(theAct, state)
 
       return state
     }
