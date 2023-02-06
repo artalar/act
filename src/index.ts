@@ -14,6 +14,7 @@ export interface ActValue<T = unknown> {
 export interface ActComputed<T = unknown> {
   (): T
   subscribe(cb: (state: T) => void): () => void
+  _s?: Set<Subscriber>
 }
 
 export type Act<T = unknown> = ActValue<T> | ActComputed<T>
@@ -54,7 +55,8 @@ export var act: {
     schedule?: null | (() => void)
   }
 } = (init, equal) => {
-  var version = -1
+  var queueVersion = -1
+  var subscriberVersion = -1
   var state: any
   var theAct: ActValue<any> & ActComputed<any>
 
@@ -62,8 +64,22 @@ export var act: {
     var deps: Dependencies = []
     // @ts-expect-error expected properties declared below
     theAct = () => {
-      if (version !== SUBSCRIBER_VERSION) {
-        version = SUBSCRIBER_VERSION
+      if (
+        queueVersion === QUEUE_VERSION &&
+        SUBSCRIBER !== null &&
+        theAct._s?.size
+      ) {
+        for (const s of theAct._s) {
+          for (const { _s } of s._v) {
+            if (!_s.has(SUBSCRIBER)) {
+              _s.add(SUBSCRIBER)
+              SUBSCRIBER._v.push(theAct)
+            }
+          }
+          break
+        }
+      } else if (subscriberVersion !== SUBSCRIBER_VERSION) {
+        subscriberVersion = SUBSCRIBER_VERSION
 
         var prevDeps = DEPS
         DEPS = null
@@ -93,6 +109,7 @@ export var act: {
           DEPS = prevDeps
         }
       }
+      queueVersion = QUEUE_VERSION
 
       // @ts-expect-error can't type a structure
       DEPS?.push(theAct, state)
@@ -109,13 +126,15 @@ export var act: {
 
         state = newState
 
-        if (QUEUE.push(theAct._s) === 1) act.notify.schedule?.()
+        if (QUEUE.push(theAct._s) === 1) {
+          QUEUE_VERSION++
+          act.notify.schedule?.()
+        }
 
         theAct._s = new Set()
       }
 
-      if (version !== SUBSCRIBER_VERSION && SUBSCRIBER !== null) {
-        version = SUBSCRIBER_VERSION
+      if (SUBSCRIBER !== null && !theAct._s.has(SUBSCRIBER)) {
         theAct._s.add(SUBSCRIBER)
         SUBSCRIBER._v.push(theAct)
       }
@@ -160,15 +179,17 @@ export var act: {
     }
 
     subscriber()
+    ;(theAct._s ??= new Set()).add(subscriber)
 
-    return un
+    return () => {
+      theAct._s!.delete(subscriber)
+      un()
+    }
   }
 
   return theAct
 }
 act.notify = () => {
-  QUEUE_VERSION++
-
   var iterator = QUEUE
 
   QUEUE = []
