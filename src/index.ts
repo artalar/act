@@ -89,7 +89,7 @@ export var act: {
             }
 
             if (!isActual) {
-              DEPS = deps = []
+              ;(DEPS = deps).length = 0
 
               var newState = init()
 
