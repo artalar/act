@@ -14,7 +14,6 @@ export interface ActValue<T = unknown> {
 export interface ActComputed<T = unknown> {
   (): T
   subscribe(cb: (state: T) => void): () => void
-  _s: Set<Subscriber>
 }
 
 export type Act<T = unknown> = ActValue<T> | ActComputed<T>
@@ -32,7 +31,7 @@ type Dependencies =
 // #endregion
 
 /** subscribers from all touched acts */
-var QUEUE = new Set<Subscriber>()
+var QUEUE: Array<Set<Subscriber>> = []
 
 /** global queue cache flag */
 var QUEUE_VERSION = 0
@@ -42,10 +41,6 @@ var SUBSCRIBER: null | Subscriber = null
 
 /** stack-based parent ref to silently link nodes */
 var DEPS: null | Dependencies = null
-
-var link = (valueAct: ActValue) =>
-  valueAct._s.size === valueAct._s.add(SUBSCRIBER!).size ||
-  SUBSCRIBER!._v.push(valueAct)
 
 // @ts-expect-error `var` is more performant, but broke the types
 export var act: {
@@ -61,7 +56,7 @@ export var act: {
   var theAct: ActValue<any> & ActComputed<any>
 
   if (typeof init === 'function') {
-    var lastSubscriber: typeof SUBSCRIBER = null
+    var last: Array<ActValue> = []
     var deps: Dependencies = []
     // @ts-expect-error expected properties declared below
     theAct = () => {
@@ -95,14 +90,13 @@ export var act: {
         }
 
         queueVersion = QUEUE_VERSION
-        lastSubscriber = SUBSCRIBER
-      } else if (
-        SUBSCRIBER !== null &&
-        lastSubscriber !== null &&
-        lastSubscriber !== SUBSCRIBER
-      ) {
+        if (SUBSCRIBER !== null) last = SUBSCRIBER?._v
+      } else if (SUBSCRIBER !== null && last !== SUBSCRIBER._v) {
         // reuse leafs of the last subscriber
-        lastSubscriber._v.forEach(link)
+        last.forEach((valueAct) => {
+          valueAct._s.size === valueAct._s.add(SUBSCRIBER!).size ||
+            SUBSCRIBER!._v.push(valueAct)
+        })
       }
 
       // @ts-expect-error can't type a structure
@@ -119,35 +113,42 @@ export var act: {
 
         QUEUE_VERSION++
 
-        if (QUEUE.size === 0) act.notify.schedule?.()
+        if (QUEUE.push(theAct._s) === 1) act.notify.schedule?.()
 
-        for (var subscriber of theAct._s) QUEUE.add(subscriber)
-        theAct._s.clear()
+        theAct._s = new Set()
       }
 
-      if (SUBSCRIBER !== null) link(theAct)
+      SUBSCRIBER !== null &&
+        (theAct._s.size === theAct._s.add(SUBSCRIBER!).size ||
+          SUBSCRIBER!._v.push(theAct))
 
       // @ts-expect-error can't type a structure
       DEPS?.push(theAct, state)
 
       return state
     }
+    theAct._s = new Set()
   }
 
   theAct.subscribe = (cb) => {
+    var queueVersion = -1
     var lastState: unknown = {}
 
     // @ts-expect-error `var` could be more performant than `var`
     var subscriber: Subscriber = () => {
-      try {
-        for (var { _s } of subscriber._v) _s.delete(subscriber)
-        subscriber._v.length = 0
+      if (queueVersion !== QUEUE_VERSION) {
+        queueVersion = QUEUE_VERSION
 
-        SUBSCRIBER = subscriber
+        try {
+          for (var { _s } of subscriber._v) _s.delete(subscriber)
+          subscriber._v.length = 0
 
-        if (theAct() !== lastState) cb((lastState = state))
-      } finally {
-        SUBSCRIBER = null
+          SUBSCRIBER = subscriber
+
+          if (theAct() !== lastState) cb((lastState = state))
+        } finally {
+          SUBSCRIBER = null
+        }
       }
     }
     subscriber._v = []
@@ -159,15 +160,15 @@ export var act: {
     }
   }
 
-  theAct._s = new Set()
-
   return theAct
 }
 act.notify = () => {
   var iterator = QUEUE
 
-  QUEUE = new Set()
+  QUEUE = []
 
-  for (var subscriber of iterator) subscriber()
+  for (var subscribers of iterator) {
+    for (var subscriber of subscribers) subscriber()
+  }
 }
 act.notify.schedule = () => Promise.resolve().then(act.notify)
