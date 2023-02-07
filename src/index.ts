@@ -14,7 +14,7 @@ export interface ActValue<T = unknown> {
 export interface ActComputed<T = unknown> {
   (): T
   subscribe(cb: (state: T) => void): () => void
-  _s?: Set<Subscriber>
+  _s: Set<Subscriber>
 }
 
 export type Act<T = unknown> = ActValue<T> | ActComputed<T>
@@ -64,52 +64,51 @@ export var act: {
     var deps: Dependencies = []
     // @ts-expect-error expected properties declared below
     theAct = () => {
-      if (
-        queueVersion === QUEUE_VERSION &&
-        SUBSCRIBER !== null &&
-        theAct._s?.size
-      ) {
-        for (const s of theAct._s) {
-          for (const { _s } of s._v) {
-            if (!_s.has(SUBSCRIBER)) {
-              _s.add(SUBSCRIBER)
-              SUBSCRIBER._v.push(theAct)
-            }
+      if (subscriberVersion !== SUBSCRIBER_VERSION) {
+        if (
+          queueVersion === QUEUE_VERSION &&
+          SUBSCRIBER !== null &&
+          theAct._s.size !== 0
+        ) {
+          // reuse leafs of current subscriber
+          for (const s of theAct._s) {
+            for (const { _s } of s._v)
+              if (_s.size !== _s.add(SUBSCRIBER).size)
+                SUBSCRIBER._v.push(theAct)
+            break
           }
-          break
+        } else {
+          var prevDeps = DEPS
+          DEPS = null
+
+          try {
+            var isActual = deps.length > 0
+            for (var i = 0; isActual && i < deps.length; i += 2) {
+              // @ts-expect-error can't type a structure
+              isActual = Object.is(deps[i + 1], deps[i]())
+            }
+
+            if (!isActual) {
+              DEPS = deps = []
+
+              var newState = init()
+
+              if (
+                equal === undefined ||
+                // first call
+                state === undefined ||
+                !equal(state, newState)
+              ) {
+                state = newState
+              }
+            }
+          } finally {
+            DEPS = prevDeps
+          }
         }
-      } else if (subscriberVersion !== SUBSCRIBER_VERSION) {
+        queueVersion = QUEUE_VERSION
         subscriberVersion = SUBSCRIBER_VERSION
-
-        var prevDeps = DEPS
-        DEPS = null
-
-        try {
-          var isActual = deps.length > 0
-          for (var i = 0; isActual && i < deps.length; i += 2) {
-            // @ts-expect-error can't type a structure
-            isActual = Object.is(deps[i + 1], deps[i]())
-          }
-
-          if (!isActual) {
-            DEPS = deps = []
-
-            var newState = init()
-
-            if (
-              equal === undefined ||
-              // first call
-              state === undefined ||
-              !equal(state, newState)
-            ) {
-              state = newState
-            }
-          }
-        } finally {
-          DEPS = prevDeps
-        }
       }
-      queueVersion = QUEUE_VERSION
 
       // @ts-expect-error can't type a structure
       DEPS?.push(theAct, state)
@@ -134,8 +133,10 @@ export var act: {
         theAct._s = new Set()
       }
 
-      if (SUBSCRIBER !== null && !theAct._s.has(SUBSCRIBER)) {
-        theAct._s.add(SUBSCRIBER)
+      if (
+        SUBSCRIBER !== null &&
+        theAct._s.size !== theAct._s.add(SUBSCRIBER).size
+      ) {
         SUBSCRIBER._v.push(theAct)
       }
 
@@ -144,7 +145,6 @@ export var act: {
 
       return state
     }
-    theAct._s = new Set()
   }
 
   theAct.subscribe = (cb) => {
@@ -157,8 +157,7 @@ export var act: {
         try {
           queueVersion = QUEUE_VERSION
 
-          un()
-          subscriber._v = []
+          for (var { _s } of subscriber._v.splice(0)) _s.delete(subscriber)
 
           SUBSCRIBER = subscriber
 
@@ -172,20 +171,18 @@ export var act: {
     }
     subscriber._v = []
 
-    var un = () => {
-      for (var signal of subscriber._v) {
-        signal._s.delete(subscriber)
-      }
-    }
-
     subscriber()
-    ;(theAct._s ??= new Set()).add(subscriber)
+    theAct._s.add(subscriber)
 
     return () => {
-      theAct._s!.delete(subscriber)
-      un()
+      theAct._s.delete(subscriber)
+      if (theAct._s.size === 0) {
+        for (var { _s } of subscriber._v) _s.delete(subscriber)
+      }
     }
   }
+
+  theAct._s = new Set()
 
   return theAct
 }
