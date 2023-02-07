@@ -31,8 +31,8 @@ type Dependencies =
 
 // #endregion
 
-/** subscribers from all touched signals */
-var QUEUE: Array<Set<Subscriber>> = []
+/** subscribers from all touched acts */
+var QUEUE = new Set<Subscriber>()
 
 /** global queue cache flag */
 var QUEUE_VERSION = 0
@@ -40,11 +40,12 @@ var QUEUE_VERSION = 0
 /** current subscriber during invalidation */
 var SUBSCRIBER: null | Subscriber = null
 
-/** global subscriber pull cache flag */
-var SUBSCRIBER_VERSION = 0
-
 /** stack-based parent ref to silently link nodes */
 var DEPS: null | Dependencies = null
+
+var link = (valueAct: ActValue) =>
+  valueAct._s.size === valueAct._s.add(SUBSCRIBER!).size ||
+  SUBSCRIBER!._v.push(valueAct)
 
 // @ts-expect-error `var` is more performant, but broke the types
 export var act: {
@@ -56,58 +57,52 @@ export var act: {
   }
 } = (init, equal) => {
   var queueVersion = -1
-  var subscriberVersion = -1
   var state: any
   var theAct: ActValue<any> & ActComputed<any>
 
   if (typeof init === 'function') {
+    var lastSubscriber: typeof SUBSCRIBER = null
     var deps: Dependencies = []
     // @ts-expect-error expected properties declared below
     theAct = () => {
-      if (subscriberVersion !== SUBSCRIBER_VERSION) {
-        if (
-          queueVersion === QUEUE_VERSION &&
-          SUBSCRIBER !== null &&
-          theAct._s.size !== 0
-        ) {
-          // reuse leafs of current subscriber
-          for (const s of theAct._s) {
-            for (const { _s } of s._v)
-              if (_s.size !== _s.add(SUBSCRIBER).size)
-                SUBSCRIBER._v.push(theAct)
-            break
+      if (queueVersion !== QUEUE_VERSION) {
+        var prevDeps = DEPS
+        DEPS = null
+
+        try {
+          var isActual = deps.length > 0
+          for (var i = 0; isActual && i < deps.length; i += 2) {
+            // @ts-expect-error can't type a structure
+            isActual = Object.is(deps[i + 1], deps[i]())
           }
-        } else {
-          var prevDeps = DEPS
-          DEPS = null
 
-          try {
-            var isActual = deps.length > 0
-            for (var i = 0; isActual && i < deps.length; i += 2) {
-              // @ts-expect-error can't type a structure
-              isActual = Object.is(deps[i + 1], deps[i]())
+          if (!isActual) {
+            ;(DEPS = deps).length = 0
+
+            var newState = init()
+
+            if (
+              equal === undefined ||
+              // first call
+              state === undefined ||
+              !equal(state, newState)
+            ) {
+              state = newState
             }
-
-            if (!isActual) {
-              ;(DEPS = deps).length = 0
-
-              var newState = init()
-
-              if (
-                equal === undefined ||
-                // first call
-                state === undefined ||
-                !equal(state, newState)
-              ) {
-                state = newState
-              }
-            }
-          } finally {
-            DEPS = prevDeps
           }
+        } finally {
+          DEPS = prevDeps
         }
+
         queueVersion = QUEUE_VERSION
-        subscriberVersion = SUBSCRIBER_VERSION
+        lastSubscriber = SUBSCRIBER
+      } else if (
+        SUBSCRIBER !== null &&
+        lastSubscriber !== null &&
+        lastSubscriber !== SUBSCRIBER
+      ) {
+        // reuse leafs of the last subscriber
+        lastSubscriber._v.forEach(link)
       }
 
       // @ts-expect-error can't type a structure
@@ -120,25 +115,17 @@ export var act: {
     // @ts-expect-error expected properties declared below
     theAct = (newState) => {
       if (newState !== undefined && !Object.is(newState, state)) {
-        // mark all computeds dirty
-        ++SUBSCRIBER_VERSION
-
         state = newState
 
-        if (QUEUE.push(theAct._s) === 1) {
-          QUEUE_VERSION++
-          act.notify.schedule?.()
-        }
+        QUEUE_VERSION++
 
-        theAct._s = new Set()
+        if (QUEUE.size === 0) act.notify.schedule?.()
+
+        for (var subscriber of theAct._s) QUEUE.add(subscriber)
+        theAct._s.clear()
       }
 
-      if (
-        SUBSCRIBER !== null &&
-        theAct._s.size !== theAct._s.add(SUBSCRIBER).size
-      ) {
-        SUBSCRIBER._v.push(theAct)
-      }
+      if (SUBSCRIBER !== null) link(theAct)
 
       // @ts-expect-error can't type a structure
       DEPS?.push(theAct, state)
@@ -148,37 +135,27 @@ export var act: {
   }
 
   theAct.subscribe = (cb) => {
-    var queueVersion = -1
     var lastState: unknown = {}
 
-    // @ts-expect-error `var` could be more performant than `const`
+    // @ts-expect-error `var` could be more performant than `var`
     var subscriber: Subscriber = () => {
-      if (queueVersion !== QUEUE_VERSION) {
-        try {
-          queueVersion = QUEUE_VERSION
+      try {
+        for (var { _s } of subscriber._v) _s.delete(subscriber)
+        subscriber._v.length = 0
 
-          for (var { _s } of subscriber._v.splice(0)) _s.delete(subscriber)
+        SUBSCRIBER = subscriber
 
-          SUBSCRIBER = subscriber
-
-          SUBSCRIBER_VERSION++
-
-          if (theAct() !== lastState) cb((lastState = state))
-        } finally {
-          SUBSCRIBER = null
-        }
+        if (theAct() !== lastState) cb((lastState = state))
+      } finally {
+        SUBSCRIBER = null
       }
     }
     subscriber._v = []
 
     subscriber()
-    theAct._s.add(subscriber)
 
     return () => {
-      theAct._s.delete(subscriber)
-      if (theAct._s.size === 0) {
-        for (var { _s } of subscriber._v) _s.delete(subscriber)
-      }
+      for (var { _s } of subscriber._v) _s.delete(subscriber)
     }
   }
 
@@ -189,10 +166,8 @@ export var act: {
 act.notify = () => {
   var iterator = QUEUE
 
-  QUEUE = []
+  QUEUE = new Set()
 
-  for (var subscribers of iterator) {
-    for (var subscriber of subscribers) subscriber()
-  }
+  for (var subscriber of iterator) subscriber()
 }
 act.notify.schedule = () => Promise.resolve().then(act.notify)
