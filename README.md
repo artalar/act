@@ -1,4 +1,4 @@
-**Act** is a reactive library that is incredibly efficient in terms of speed, size and consistency. [Here is](https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn) a big benchmark comparing all popular state managers, which Act passes with flying colors. The size is only [0.4KB gzipped](https://bundlejs.com/?q=%40artalar%2Fact)!
+**Act** is a reactive library that is incredibly efficient in terms of speed, size and consistency. [Here is](https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn) a big benchmark comparing all popular state managers, which Act passes with flying colors. The size is only [0.5KB gzipped](https://bundlejs.com/?q=%40artalar%2Fact)!
 
 I built it for fun, but you are free to use it in your projects. I'm open to bug reports and suggestions.
 
