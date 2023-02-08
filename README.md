@@ -164,6 +164,10 @@ act.notify = () => requestAnimationFrame(notify)
 
 ## How is it so small and so fast?
 
+![image](https://user-images.githubusercontent.com/27290320/217609306-eafde9c3-56fa-49a3-aaa9-842c9ee56ca0.png)
+
+![image](https://user-images.githubusercontent.com/27290320/217609349-e99a2e26-0a9e-4283-b655-270798162e98.png)
+
 I have spent half a decade researching reactive programming and prototyping. The most production-ready and feature-rich result of my work is [reatom.dev](https://www.reatom.dev/). Under the hood Reatom uses topological sorting on top of immutable graph features, to achieve things like DI and lifecycle hooks. But does it apply to each and every use case? Nope. So I decided to create a lightweight version of Reatom with a simpler api, lower cost and smaller size.
 
 Sooo, how does it work? One of the challenges in reactive programming is optimizing node combination, which can cause [glitches](https://en.wikipedia.org/wiki/Reactive_programming#Glitches). However, conditional usage of computed dependencies is the hardest and most painful thing, as there is a lot of corner cases to consider if you want conditions of any kind to be supported in the most optimal way.
@@ -181,8 +185,6 @@ But there is one limitation: as we don't have cross-links and invalidation state
 However, [Reatom](https://www.reatom.dev/) combines both approaches and will optimize all your computations in the most complex cases, allowing you to inspect immutable snaphots of any update. If you need something more feature-rich, have a look at it.
 
 ### Algorithm
-
-<!-- ![](./assets/graph_example.svg) -->
 
 Subscriber is the source of truth. Subscriber pulls a computer, and the computer collects all used dependencies and its states.
 
