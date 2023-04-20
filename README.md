@@ -14,7 +14,7 @@ npm i @artalar/act
 
 Pass initial value to `act` function to create mutable observer or pass a callback to create a computed observer. You could mutate observer by call it with a new value. All observers are lazy and recalculates only when has a subscribtion. You could read acts (lets call it "act" / "acts") by call it as a function. Act reading inside a computer is reactive.
 
-All updates are butch and will be applied in the next microtask. So you can update multiple acts synchronously and all computed will callculate and subscribers will be notified only once. You could redefine this behavior by [overriding `act.notify` method](#sync-batch).
+All updates are batched and will be applied in the next microtask. So you can update multiple acts synchronously and all computed will callculate and subscribers will be notified only once. You could redefine this behavior by [overriding `act.notify` method](#sync-batch).
 
 > See [React example below](#react-example).
 
