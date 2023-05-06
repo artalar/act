@@ -2,7 +2,7 @@
 
 I built it for fun, but you are free to use it in your projects. I'm open to bug reports and suggestions.
 
-> See also: [how is Act so small and so fast?](#how-is-it-so-small-and-so-fast)
+> See also: [how is Act so small and so fast?](#background)
 
 ## Installation
 
@@ -162,11 +162,11 @@ const { notify } = act
 act.notify = () => requestAnimationFrame(notify)
 ```
 
-## How is it so small and so fast?
+## Background
 
-![image](https://user-images.githubusercontent.com/27290320/217609306-eafde9c3-56fa-49a3-aaa9-842c9ee56ca0.png)
+![image](https://user-images.githubusercontent.com/27290320/236627543-0d3793e9-ce7a-4b87-b489-c01524fc7e82.png)
 
-![image](https://user-images.githubusercontent.com/27290320/217609349-e99a2e26-0a9e-4283-b655-270798162e98.png)
+> https://excalidraw.com/#json=A5gmwbDPUWevsv-0U2utk,DdyrOlteLoiGuUZU3KFe2w
 
 I have spent half a decade researching reactive programming and prototyping. The most production-ready and feature-rich result of my work is [reatom.dev](https://www.reatom.dev/). Under the hood Reatom uses topological sorting on top of immutable graph features, to achieve things like DI and lifecycle hooks. But does it apply to each and every use case? Nope. So I decided to create a lightweight version of Reatom with a simpler api, lower cost and smaller size.
 
