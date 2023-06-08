@@ -108,4 +108,17 @@ test('redefine act.notify', async () => {
   assert.is(calls, 2)
 })
 
+test('get old state in subscriber', async () => {
+  const a = act(0)
+
+  let lastState;
+  a.subscribe((state, last) => {
+    lastState = last
+  })
+
+  a(1)
+  act.notify()
+  assert.is(lastState, 0)
+})
+
 test.run()
