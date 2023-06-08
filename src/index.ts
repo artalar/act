@@ -149,7 +149,7 @@ export var act: {
 
   theAct.subscribe = (cb) => {
     var queueVersion = -1
-    var lastState: unknown = {}
+    var lastState: unknown = null
 
     // @ts-expect-error `var` could be more performant than `const`
     var subscriber: Subscriber = () => {
