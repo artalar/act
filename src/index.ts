@@ -8,12 +8,12 @@ interface Subscriber {
 /** Base mutable reactive primitive, a leaf of reactive graph */
 export interface ActValue<T = unknown> {
   (newState?: T): T
-  subscribe(cb: (state: T) => void): () => void
+  subscribe(cb: (state: T, prevState?: T) => void): () => void
   _s: Set<Subscriber>
 }
 export interface ActComputed<T = unknown> {
   (): T
-  subscribe(cb: (state: T) => void): () => void
+  subscribe(cb: (state: T, prevState?: T) => void): () => void
   _s: Set<Subscriber>
 }
 
@@ -150,6 +150,7 @@ export var act: {
   theAct.subscribe = (cb) => {
     var queueVersion = -1
     var lastState: unknown = {}
+    var prevState: unknown
 
     // @ts-expect-error `var` could be more performant than `const`
     var subscriber: Subscriber = () => {
@@ -163,7 +164,10 @@ export var act: {
 
           SUBSCRIBER_VERSION++
 
-          if (theAct() !== lastState) cb((lastState = state))
+          if (theAct() !== lastState) {
+            cb((lastState = state), prevState)
+            prevState = state
+          }
         } finally {
           SUBSCRIBER = null
         }
