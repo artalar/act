@@ -3,7 +3,7 @@ import * as assert from 'uvu/assert'
 
 import { act } from './index'
 
-test('read outside effect stale computed', () => {
+test('should get the fresh state outside an effect', () => {
   const a = act(0)
   const b = () => a()
 
@@ -52,7 +52,7 @@ test('https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn', () => {
   }
 })
 
-test('throw should not broke linking', () => {
+test('should not broke coz an error', () => {
   try {
     // @ts-expect-error
     act(() => ({}.a.b)).subscribe(() => {})
@@ -67,7 +67,7 @@ test('throw should not broke linking', () => {
   assert.equal([A(), B(), C()], [1, 1, 1])
 })
 
-test('should not store duplicate effects', () => {
+test('should not store duplicated computeds', () => {
   const a = act(0)
   act(() => {
     for (let i = 0; i < 10; i++) a()
@@ -76,7 +76,7 @@ test('should not store duplicate effects', () => {
   assert.is(a._s.size, 1)
 })
 
-test('should not stale subscribtion', () => {
+test('should not have stale subscribtion', () => {
   const a = act(0)
   const b = act(0)
   act(() => b() || a()).subscribe(() => {})
@@ -85,6 +85,24 @@ test('should not stale subscribtion', () => {
   b(123)
   act.notify()
   assert.is(a._s.size, 0)
+})
+
+test('prevState for a subscriber', async () => {
+  const a = act(0)
+
+  let state, prevState
+  a.subscribe((_state, _prevState) => {
+    state = _state
+    prevState = _prevState
+  })
+
+  assert.is(state, 0)
+  assert.is(prevState, undefined)
+
+  a(1)
+  act.notify()
+  assert.is(state, 1)
+  assert.is(prevState, 0)
 })
 
 test('redefine act.notify', async () => {
@@ -106,24 +124,6 @@ test('redefine act.notify', async () => {
   assert.is(calls, 1)
   await new Promise((r) => setTimeout(r))
   assert.is(calls, 2)
-})
-
-test('get old state in subscriber', async () => {
-  const a = act(0)
-
-  let state, prevState;
-  a.subscribe((_state, _prevState) => {
-    state = _state
-    prevState = _prevState
-  })
-
-  assert.is(state, 0)
-  assert.is(prevState, undefined)
-
-  a(1)
-  act.notify()
-  assert.is(state, 1)
-  assert.is(prevState, 0)
 })
 
 test.run()
